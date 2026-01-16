@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seeing Sound | Beautiful Sound Visualization</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .future-travel-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, rgba(0, 243, 178, 0.8), rgba(119, 0, 255, 0.8));
+            border: 1px solid rgba(0, 243, 178, 0.5);
+            border-radius: 4px;
+            color: #fff;
+            font-family: 'Share Tech Mono', monospace;
+            text-transform: uppercase;
+            font-size: 14px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 243, 178, 0.3);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+        
+        .future-travel-btn:hover {
+            box-shadow: 0 0 20px rgba(0, 243, 178, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        .future-travel-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.7s ease;
+        }
+        
+        .future-travel-btn:hover::before {
+            left: 100%;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .soundscape-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #3a86ff 0%, #8338ec 100%);
+            border: 1px solid rgba(58, 134, 255, 0.5);
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(131, 56, 236, 0.4);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow: hidden;
+        }
+        
+        .soundscape-btn:hover {
+            box-shadow: 0 6px 20px rgba(131, 56, 236, 0.6);
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, #4a94ff 0%, #9349fd 100%);
+        }
+        
+        .soundscape-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: transform 0.7s ease;
+            transform: translateX(-100%);
+        }
+        
+        .soundscape-btn:hover::before {
+            transform: translateX(100%);
+        }
+
+        .soundscape-btn::after {
+            content: '✦';
+            font-size: 16px;
+            display: inline-block;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="backdrop-blur"></div>
+        <div class="backdrop-gradient"></div>
+        
+        <a href="/retro" class="future-travel-btn">Travel to the Future</a>
+        <a href="/soundscape" class="soundscape-btn">Experience Beyond Sound</a>
+
+        <header>
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M6 12C6 8.68629 8.68629 6 12 6C15.3137 6 18 8.68629 18 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <circle cx="12" cy="12" r="1" fill="currentColor"/>
+                        <path d="M10 19L12 21L14 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h1 class="logo-text">Seeing Sound</h1>
+            </div>
+            <p class="tagline">Experience sound in a new dimension</p>
+            
+            <button id="startButton" class="primary-btn">
+                <span class="btn-icon">
+                    <svg class="icon-play" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 5.14V19.14C8 19.94 8.93 20.44 9.6 20L18.6 13C19.2 12.6 19.2 11.7 18.6 11.3L9.6 4.3C8.93 3.87 8 4.36 8 5.14Z" fill="currentColor"/>
+                    </svg>
+                    <svg class="icon-stop" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="6" y="6" width="12" height="12" rx="1" fill="currentColor"/>
+                    </svg>
+                </span>
+                <span class="btn-text">Start Listening</span>
+            </button>
+        </header>
+
+        <main>
+            <section class="visualization-section">
+                <div class="spectrogram-container">
+                    <canvas id="spectrogramCanvas"></canvas>
+                    <div class="frequency-scale">
+                        <div class="scale-label">20 kHz</div>
+                        <div class="scale-label">10 kHz</div>
+                        <div class="scale-label">5 kHz</div>
+                        <div class="scale-label">2 kHz</div>
+                        <div class="scale-label">1 kHz</div>
+                        <div class="scale-label">500 Hz</div>
+                        <div class="scale-label">100 Hz</div>
+                        <div class="scale-label">20 Hz</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="controls-section">
+                <div class="card-container">
+                    <div class="control-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 6V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M18 12L6 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M16 8L8 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M8 8L16 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <h2>Detail Level</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="segmented-control">
+                                <input type="radio" name="fft-radio" id="fft-low" value="1024">
+                                <label for="fft-low">Low</label>
+                                
+                                <input type="radio" name="fft-radio" id="fft-medium" value="2048" checked>
+                                <label for="fft-medium">Medium</label>
+                                
+                                <input type="radio" name="fft-radio" id="fft-high" value="4096">
+                                <label for="fft-high">High</label>
+                                
+                                <span class="selection-indicator"></span>
+                            </div>
+                            <div class="tooltip">Higher values show more frequency detail but may reduce responsiveness</div>
+                        </div>
+                    </div>
+
+                    <div class="control-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M2 12H4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M6 12H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M10 12H12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M14 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M18 12H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M22 12H24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <h2>Frequency Range</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="range-slider-container">
+                                <div class="slider-labels">
+                                    <span id="minFreqLabel">0 Hz</span>
+                                    <span id="maxFreqLabel">4000 Hz</span>
+                                </div>
+                                <div class="dual-slider">
+                                    <div class="slider-track"></div>
+                                    <div class="slider-range"></div>
+                                    <input type="range" id="minFreq" min="0" max="22000" value="0" class="range-slider-input">
+                                    <input type="range" id="maxFreq" min="0" max="22000" value="4000" class="range-slider-input">
+                                </div>
+                            </div>
+                            <div class="preset-buttons">
+                                <button class="preset-btn" data-min="20" data-max="20000">
+                                    <span class="preset-icon">🎵</span>
+                                    <span class="preset-label">Music</span>
+                                </button>
+                                <button class="preset-btn" data-min="20000" data-max="40000">
+                                    <span class="preset-icon">🦇</span>
+                                    <span class="preset-label">Ultrasounds</span>
+                                </button>
+                                <button class="preset-btn" data-min="0" data-max="4000">
+                                    <span class="preset-icon">🔊</span>
+                                    <span class="preset-label">Default</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 4V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M4 12H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M12 16V20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M16 12H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                </svg>
+                            </div>
+                            <h2>Noise Threshold</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="slider-with-preview">
+                                <input type="range" id="noiseThreshold" min="0" max="100" value="0" class="slider-input">
+                                <div class="threshold-preview">
+                                    <div class="noise-visualization">
+                                        <div class="noise-bar"></div>
+                                        <div class="noise-bar"></div>
+                                        <div class="noise-bar"></div>
+                                        <div class="noise-bar"></div>
+                                        <div class="noise-bar"></div>
+                                        <div class="noise-bar"></div>
+                                        <div class="noise-bar"></div>
+                                        <div class="noise-bar"></div>
+                                    </div>
+                                    <div class="threshold-indicator"></div>
+                                </div>
+                                <div class="threshold-value">0%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M15 8L19 12L15 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <h2>Scroll Speed</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="speed-control">
+                                <input type="radio" name="speed-radio" id="speed-slow" value="slow">
+                                <label for="speed-slow">Slow</label>
+                                
+                                <input type="radio" name="speed-radio" id="speed-medium" value="medium" checked>
+                                <label for="speed-medium">Medium</label>
+                                
+                                <input type="radio" name="speed-radio" id="speed-fast" value="fast">
+                                <label for="speed-fast">Fast</label>
+                                
+                                <span class="selection-indicator"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html> 

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SONIC ANALYSIS SYSTEM | XA-42 Protocol</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/retro.css') }}">
+</head>
+<body>
+    <div class="terminal-interface">
+        <!-- Terminal effects -->
+        <div class="scan-line"></div>
+        <div class="terminal-flicker"></div>
+        <div class="crt-effect"></div>
+        
+        <!-- System status bar -->
+        <header>
+            <div class="system-bar">
+                <div class="status-left">
+                    <span class="status-indicator online"></span>
+                    <span class="system-status">STANDBY</span>
+                </div>
+                <div class="time-readout">00:00:00</div>
+                <div class="status-right">
+                    XENOMORPHIC ACOUSTIC DECODER v3.7
+                </div>
+            </div>
+            
+            <div class="main-header">
+                <div class="header-left">
+                    <div class="header-emblem">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M12 6V18" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M7 9L17 15" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M7 15L17 9" stroke="currentColor" stroke-width="1.5"/>
+                        </svg>
+                    </div>
+                    <div class="header-title">
+                        <h1 class="glitch" data-text="SEEING SOUND">SEEING SOUND</h1>
+                        <span class="subtitle">ACOUSTIC PATTERN ANALYSIS SYSTEM</span>
+                    </div>
+                </div>
+                
+                <div class="header-navigation">
+                    <div class="retro-nav">
+                        <a href="/" class="retro-nav-link">STANDARD</a>
+                        <a href="/retro" class="retro-nav-link active">RETRO</a>
+                        <a href="/soundscape" class="retro-nav-link">BEYOND SOUND</a>
+                    </div>
+                </div>
+                
+                <button id="scanButton" class="neo-button">
+                    <span class="button-indicator"></span>
+                    <span class="button-text">INITIATE SCAN</span>
+                </button>
+            </div>
+        </header>
+        
+        <main>
+            <div class="screen-container">
+                <!-- Main visualization screen -->
+                <div class="screen-frame">
+                    <div class="screen-corner top-left"></div>
+                    <div class="screen-corner top-right"></div>
+                    <div class="screen-corner bottom-left"></div>
+                    <div class="screen-corner bottom-right"></div>
+                    
+                    <div class="screen-header">
+                        <div class="screen-title">ACOUSTIC SPECTRUM ANALYSIS</div>
+                        <div class="screen-controls">
+                            <div class="screen-dot"></div>
+                            <div class="screen-dot"></div>
+                            <div class="screen-dot"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="screen-content">
+                        <div class="spectrogram-container">
+                            <canvas id="spectrogramCanvas"></canvas>
+                            <div class="grid-overlay"></div>
+                            <div class="frequency-scale"></div>
+                            <div class="time-markers">
+                                <div class="time-marker">NOW</div>
+                                <div class="time-marker">-2s</div>
+                                <div class="time-marker">-4s</div>
+                                <div class="time-marker">-6s</div>
+                                <div class="time-marker">-8s</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Control panel -->
+                <div class="analysis-panel">
+                    <div class="panel-title">
+                        <span class="bracket">[</span>
+                        SIGNAL PARAMETERS
+                        <span class="bracket">]</span>
+                    </div>
+                    
+                    <div class="control-modules">
+                        <!-- Resolution module -->
+                        <div class="control-module">
+                            <div class="module-header">
+                                <div class="module-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M2 12H4M20 12H22M12 2V4M12 20V22M6.34315 6.34315L4.92893 4.92893M19.0711 19.0711L17.6569 17.6569M17.6569 6.34315L19.0711 4.92893M4.92893 19.0711L6.34315 17.6569M12 17C14.7614 17 17 14.7614 17 12C17 9.23858 14.7614 7 12 7C9.23858 7 7 9.23858 7 12C7 14.7614 9.23858 17 12 17Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <div class="module-title">SIGNAL RESOLUTION</div>
+                            </div>
+                            
+                            <div class="module-content">
+                                <div class="neo-segmented-control">
+                                    <input type="radio" name="resolution" id="resolution-low" value="low">
+                                    <label for="resolution-low">LOW</label>
+                                    
+                                    <input type="radio" name="resolution" id="resolution-medium" value="medium" checked>
+                                    <label for="resolution-medium">MEDIUM</label>
+                                    
+                                    <input type="radio" name="resolution" id="resolution-high" value="high">
+                                    <label for="resolution-high">HIGH</label>
+                                </div>
+                                
+                                <div class="module-readout resolution-readout">
+                                    PROCESSING POINTS<span class="readout-value">1024 pt</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Frequency range module -->
+                        <div class="control-module">
+                            <div class="module-header">
+                                <div class="module-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M2 12H6M18 12H22M7 12C7 9.23858 9.23858 7 12 7C14.7614 7 17 9.23858 17 12C17 14.7614 14.7614 17 12 17C9.23858 17 7 14.7614 7 12Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <div class="module-title">FREQUENCY SPECTRUM</div>
+                            </div>
+                            
+                            <div class="module-content">
+                                <div class="neo-dual-slider">
+                                    <div class="slider-labels">
+                                        <span>0 Hz</span>
+                                        <span>20 kHz</span>
+                                    </div>
+                                    <div class="slider-track">
+                                        <div class="slider-range freq-range"></div>
+                                        <input type="range" id="minFreq" class="neo-slider" min="0" max="20000" value="0" step="100">
+                                        <input type="range" id="maxFreq" class="neo-slider" min="0" max="20000" value="4000" step="100">
+                                    </div>
+                                </div>
+                                
+                                <div class="module-readout freq-range-readout">
+                                    RANGE<span class="readout-value">0 - 4000 Hz</span>
+                                </div>
+                                
+                                <div class="preset-controls">
+                                    <button class="neo-preset-btn" data-min="0" data-max="4000">
+                                        <span class="preset-icon">⊙</span>
+                                        VOICE
+                                    </button>
+                                    <button class="neo-preset-btn" data-min="0" data-max="8000">
+                                        <span class="preset-icon">◎</span>
+                                        MUSIC
+                                    </button>
+                                    <button class="neo-preset-btn" data-min="0" data-max="20000">
+                                        <span class="preset-icon">⦿</span>
+                                        FULL
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Noise gate module -->
+                        <div class="control-module">
+                            <div class="module-header">
+                                <div class="module-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 7V17M6 7V17M21 7L15 7L15 17L21 17M12 7V17M9 7V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <div class="module-title">NOISE GATE</div>
+                            </div>
+                            
+                            <div class="module-content">
+                                <div class="neo-threshold-control">
+                                    <div class="noise-visualization">
+                                        <div class="noise-level-bars">
+                                            <div class="noise-bar"></div>
+                                            <div class="noise-bar"></div>
+                                            <div class="noise-bar"></div>
+                                            <div class="noise-bar"></div>
+                                            <div class="noise-bar"></div>
+                                            <div class="noise-bar"></div>
+                                            <div class="noise-bar"></div>
+                                            <div class="noise-bar"></div>
+                                        </div>
+                                        <div class="threshold-line"></div>
+                                    </div>
+                                    
+                                    <input type="range" id="noiseThreshold" class="neo-slider" min="0" max="100" value="0" step="1" style="position: relative; top: 0;">
+                                    
+                                    <div class="threshold-readout">
+                                        THRESHOLD<span class="readout-value">0%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Scroll speed module -->
+                        <div class="control-module">
+                            <div class="module-header">
+                                <div class="module-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M15 4.5L9 4.5M15 19.5L9 19.5M8.5 9L5 12L8.5 15M15.5 9L19 12L15.5 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <div class="module-title">SCAN RATE</div>
+                            </div>
+                            
+                            <div class="module-content">
+                                <div class="neo-segmented-control">
+                                    <input type="radio" name="scan-rate" id="scan-slow" value="slow">
+                                    <label for="scan-slow">SLOW</label>
+                                    
+                                    <input type="radio" name="scan-rate" id="scan-medium" value="medium" checked>
+                                    <label for="scan-medium">MEDIUM</label>
+                                    
+                                    <input type="radio" name="scan-rate" id="scan-fast" value="fast">
+                                    <label for="scan-fast">FAST</label>
+                                </div>
+                                
+                                <div class="module-readout scan-rate-readout">
+                                    RATE<span class="readout-value">medium</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <div class="footer-content">
+                <div class="status-readouts">
+                    <div class="status-item">
+                        PROCESSOR<span class="status-value processor-value">5%</span>
+                    </div>
+                    <div class="status-item">
+                        MEMORY<span class="status-value memory-value">32%</span>
+                    </div>
+                    <div class="status-item">
+                        SIGNAL<span class="status-value signal-value">IDLE</span>
+                    </div>
+                </div>
+                
+                <div class="footer-badge">
+                    XENOMORPHIC ACOUSTIC PROCESSOR
+                    <div class="badge-serial">XA-0000-00</div>
+                </div>
+                
+                <div class="footer-links">
+                    <a href="#" class="footer-link">MANUAL</a>
+                    <a href="/" class="footer-link">STANDARD VIEW</a>
+                    <a href="#" class="footer-link">SETTINGS</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/retro.js') }}"></script>
+</body>
+</html> 
