@@ -424,26 +424,6 @@ class SeeingSound {
         
         // Apply a quadratic curve to make medium amplitudes brighter
         // and low amplitudes even dimmer
-        // let brightnessMultiplier;
-        
-        // if (amplitude < 80) {
-        //     // Very low amplitudes (0-80) - keep them very dim
-        //     brightnessMultiplier = Math.max(0.05, (amplitude / 80) * 0.3);
-        // } else if (amplitude < 160) {
-        //     // Medium-low amplitudes (80-160) - transition to brighter
-        //     const t = (amplitude - 80) / 80;
-        //     brightnessMultiplier = 0.3 + (t * 0.4); // 0.3 to 0.7
-        // } else {
-        //     // Higher amplitudes (160-255) - bright
-        //     const t = (amplitude - 160) / 95;
-        //     brightnessMultiplier = 0.7 + (t * 0.3); // 0.7 to 1.0
-        // }
-        
-        // r = Math.floor(r * brightnessMultiplier);
-        // g = Math.floor(g * brightnessMultiplier);
-        // b = Math.floor(b * brightnessMultiplier);
-        
-        // return `rgb(${r}, ${g}, ${b})`;
         let brightnessMultiplier;
         
         if (amplitude < 80) {
