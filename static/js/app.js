@@ -73,6 +73,9 @@ class SeeingSound {
         }
         const gl = this.gl;
 
+        // Set unpack alignment to 1 for 1-byte width texture uploads
+        gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+
         // Vertex Shader
         const vsSource = `
             attribute vec2 a_position;
@@ -798,8 +801,10 @@ class SeeingSound {
         
         // Calculate Uniforms
         const nyquist = this.settings.sampleRate / 2;
-        const minRatio = this.settings.minFreq / nyquist;
-        const maxRatio = this.settings.maxFreq / nyquist;
+        // Scale ratios by the portion of the texture actually used (bins / texHeight)
+        const heightScale = bins / this.texHeight;
+        const minRatio = (this.settings.minFreq / nyquist) * heightScale;
+        const maxRatio = (this.settings.maxFreq / nyquist) * heightScale;
         const threshold = this.settings.noiseThreshold / 100.0;
         
         const scrollSpeed = SCROLL_SPEEDS[this.settings.scrollSpeed];
