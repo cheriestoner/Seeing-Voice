@@ -21,7 +21,6 @@ class SeeingSound {
         this.analyser = null;
         this.microphone = null;
         this.canvas = document.getElementById('spectrogramCanvas');
-        this.ctx = this.canvas.getContext('2d');
         
         // Visualization settings
         this.settings = {
@@ -39,8 +38,6 @@ class SeeingSound {
         
         // Rendering variables
         this.requestId = null;
-        this.spectrogramHistory = [];
-        this.maxHistoryLength = 1000; // Adjust based on display width and scrolling speed
         
         // Canvas sizing
         this.canvasWidth = 0;
@@ -48,6 +45,9 @@ class SeeingSound {
         
         // Initialize event listeners
         this.initEventListeners();
+
+        // Initialize WebGL
+        this.initWebGL();
         
         // Set up the canvas for high DPI displays
         this.setupHighDpiCanvas();
@@ -65,6 +65,128 @@ class SeeingSound {
         this.startAmbientAnimations();
     }
     
+    initWebGL() {
+        this.gl = this.canvas.getContext('webgl');
+        if (!this.gl) {
+            console.error('WebGL not supported');
+            return;
+        }
+        const gl = this.gl;
+
+        // Vertex Shader
+        const vsSource = `
+            attribute vec2 a_position;
+            varying vec2 v_uv;
+            void main() {
+                v_uv = a_position * 0.5 + 0.5;
+                gl_Position = vec4(a_position, 0, 1);
+            }
+        `;
+
+        // Fragment Shader
+        const fsSource = `
+            precision mediump float;
+            uniform sampler2D u_texture;
+            uniform float u_offset;
+            uniform float u_min_freq_ratio;
+            uniform float u_max_freq_ratio;
+            uniform float u_threshold;
+            uniform float u_visible_width;
+            varying vec2 v_uv;
+
+            vec3 getColor(float freqRatio, float amplitude) {
+                // Replicate JS gradient: Deep Red -> Bright Red -> Orange -> Yellow
+                vec3 c0 = vec3(0.39, 0.0, 0.0); // 100,0,0
+                vec3 c1 = vec3(1.0, 0.0, 0.0);  // 255,0,0
+                vec3 c2 = vec3(1.0, 0.39, 0.0); // 255,100,0
+                vec3 c3 = vec3(1.0, 0.78, 0.0); // 255,200,0
+                vec3 c4 = vec3(1.0, 1.0, 0.2);  // 255,255,50
+                
+                vec3 color;
+                if (freqRatio < 0.25) {
+                    color = mix(c0, c1, freqRatio * 4.0);
+                } else if (freqRatio < 0.5) {
+                    color = mix(c1, c2, (freqRatio - 0.25) * 4.0);
+                } else if (freqRatio < 0.75) {
+                    color = mix(c2, c3, (freqRatio - 0.5) * 4.0);
+                } else {
+                    color = mix(c3, c4, (freqRatio - 0.75) * 4.0);
+                }
+                
+                // Amplitude brightness & Threshold
+                if (amplitude < u_threshold) return vec3(0.027, 0.027, 0.067); // #070711
+                
+                float brightness = pow(amplitude, 0.5); // Gamma
+                brightness = max(brightness, 0.05);
+                
+                return color * brightness;
+            }
+
+            void main() {
+                // X mapping (Time Ring Buffer)
+                // u_offset is the write head. We want right edge (1.0) to be u_offset.
+                float x = u_offset - (1.0 - v_uv.x) * u_visible_width;
+                x = fract(x);
+                
+                // Y mapping (Frequency Zoom)
+                float y = u_min_freq_ratio + v_uv.y * (u_max_freq_ratio - u_min_freq_ratio);
+                
+                float amp = texture2D(u_texture, vec2(x, y)).r;
+                vec3 color = getColor(v_uv.y, amp);
+                
+                // Simple Grid Lines
+                if (mod(v_uv.y * 8.0, 1.0) < 0.02 || mod(v_uv.x * 10.0, 1.0) < 0.02) {
+                    color += vec3(0.1);
+                }
+                
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        // Compile Shaders
+        const vs = this.createShader(gl, gl.VERTEX_SHADER, vsSource);
+        const fs = this.createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+        this.program = gl.createProgram();
+        gl.attachShader(this.program, vs);
+        gl.attachShader(this.program, fs);
+        gl.linkProgram(this.program);
+
+        // Buffers
+        const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+        
+        const posLoc = gl.getAttribLocation(this.program, 'a_position');
+        gl.enableVertexAttribArray(posLoc);
+        gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+        // Texture
+        this.texWidth = 2048;
+        this.texHeight = 4096; // Max supported bins
+        this.texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, this.texWidth, this.texHeight, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, null);
+        
+        this.writeHead = 0;
+        this.gl = gl;
+    }
+
+    createShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            console.error(gl.getShaderInfoLog(shader));
+            return null;
+        }
+        return shader;
+    }
+
     /**
      * Initialize event listeners for user interactions
      */
@@ -147,9 +269,6 @@ class SeeingSound {
             radio.addEventListener('change', (e) => {
                 this.settings.scrollSpeed = e.target.value;
                 this.updateSegmentedControlIndicators();
-                
-                // Clear history when scroll speed changes to avoid visual artifacts
-                this.spectrogramHistory = [];
             });
         });
         
@@ -332,15 +451,14 @@ class SeeingSound {
         this.canvas.width = this.canvasWidth;
         this.canvas.height = this.canvasHeight;
         
-        // Scale the context to ensure correct drawing operations
-        this.ctx.scale(dpr, dpr);
+        // Update WebGL viewport
+        if (this.gl) {
+            this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+        }
         
         // Set the canvas backing store size to match CSS size
         this.canvas.style.width = `${rect.width}px`;
         this.canvas.style.height = `${rect.height}px`;
-        
-        // Clear the history when resizing
-        this.spectrogramHistory = [];
     }
     
     /**
@@ -424,25 +542,42 @@ class SeeingSound {
         
         // Apply a quadratic curve to make medium amplitudes brighter
         // and low amplitudes even dimmer
-        let brightnessMultiplier;
+        // let brightnessMultiplier;
         
-        if (amplitude < 80) {
-            // Very low amplitudes (0-80) - keep them very dim
-            brightnessMultiplier = Math.max(0.05, (amplitude / 80) * 0.3);
-        } else if (amplitude < 160) {
-            // Medium-low amplitudes (80-160) - transition to brighter
-            const t = (amplitude - 80) / 80;
-            brightnessMultiplier = 0.3 + (t * 0.4); // 0.3 to 0.7
-        } else {
-            // Higher amplitudes (160-255) - bright
-            const t = (amplitude - 160) / 95;
-            brightnessMultiplier = 0.7 + (t * 0.3); // 0.7 to 1.0
-        }
+        // if (amplitude < 80) {
+        //     // Very low amplitudes (0-80) - keep them very dim
+        //     brightnessMultiplier = Math.max(0.05, (amplitude / 80) * 0.3);
+        // } else if (amplitude < 160) {
+        //     // Medium-low amplitudes (80-160) - transition to brighter
+        //     const t = (amplitude - 80) / 80;
+        //     brightnessMultiplier = 0.3 + (t * 0.4); // 0.3 to 0.7
+        // } else {
+        //     // Higher amplitudes (160-255) - bright
+        //     const t = (amplitude - 160) / 95;
+        //     brightnessMultiplier = 0.7 + (t * 0.3); // 0.7 to 1.0
+        // }
         
+        // r = Math.floor(r * brightnessMultiplier);
+        // g = Math.floor(g * brightnessMultiplier);
+        // b = Math.floor(b * brightnessMultiplier);
+        
+        // return `rgb(${r}, ${g}, ${b})`;
+
+        // Gamma correction approach
+        // Normalize amplitude (0-255) to 0-1
+        let normAmp = amplitude / 255;
+
+        // Optional: apply a gamma curve for perceptual brightness
+        const gamma = 0.5; // tweak 0.4-0.6
+        let brightnessMultiplier = Math.pow(normAmp, gamma);
+
+        // Minimum brightness to avoid full black
+        brightnessMultiplier = Math.max(brightnessMultiplier, 0.05);
+
         r = Math.floor(r * brightnessMultiplier);
         g = Math.floor(g * brightnessMultiplier);
         b = Math.floor(b * brightnessMultiplier);
-        
+
         return `rgb(${r}, ${g}, ${b})`;
     }
     
@@ -627,11 +762,8 @@ class SeeingSound {
             this.analyser.getByteFrequencyData(this.frequencyData);
             this.analyser.getByteTimeDomainData(this.timeData);
             
-            // Add current frame to history
-            this.updateSpectrogramHistory();
-            
-            // Draw the spectrogram
-            this.drawSpectrogram();
+            // Render using WebGL
+            this.renderWebGL();
             
             // Continue the render loop
             this.requestId = requestAnimationFrame(() => this.render());
@@ -643,114 +775,53 @@ class SeeingSound {
         }
     }
     
-    /**
-     * Update spectrogram history with current frequency data
-     */
-    updateSpectrogramHistory() {
-        // Check if audio context and analyser are valid
-        if (!this.analyser || !this.frequencyData) {
-            console.warn('Cannot update spectrogram history: audio analyser not initialized');
-            return;
-        }
+    renderWebGL() {
+        const gl = this.gl;
+        if (!gl || !this.program) return;
+
+        // 1. Update Texture with new frequency data
+        // We upload the full frequency data column to the current write head position
+        // Note: frequencyData is Uint8Array
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
         
-        try {
-            // Get the current frequency data and apply settings
-            const frequencyBinCount = this.analyser.frequencyBinCount;
-            const nyquistFrequency = this.settings.sampleRate / 2;
-            
-            // Calculate frequency bin width
-            const binWidth = nyquistFrequency / frequencyBinCount;
-            
-            // Find indexes corresponding to min/max frequency
-            const minIndex = Math.floor(this.settings.minFreq / binWidth);
-            const maxIndex = Math.ceil(this.settings.maxFreq / binWidth);
-            
-            // Make sure we have valid indexes
-            if (minIndex >= maxIndex || minIndex < 0 || maxIndex >= frequencyBinCount) {
-                console.warn('Invalid frequency range indexes');
-                return;
-            }
-            
-            // Extract the frequency range we're interested in
-            const relevantData = Array.from(this.frequencyData.slice(minIndex, maxIndex + 1));
-            
-            // Apply noise threshold (scale from percentage to 0-255 range)
-            const threshold = (this.settings.noiseThreshold / 100) * 255;
-            const processedData = relevantData.map(value => value < threshold ? 0 : value);
-            
-            // Add to history
-            this.spectrogramHistory.unshift(processedData);
-            
-            // Limit history length
-            if (this.spectrogramHistory.length > this.maxHistoryLength) {
-                this.spectrogramHistory.pop();
-            }
-        } catch (error) {
-            console.error('Error updating spectrogram history:', error);
-        }
-    }
-    
-    /**
-     * Draw the spectrogram visualization
-     */
-    drawSpectrogram() {
-        // Clear canvas with background color
-        this.ctx.fillStyle = '#070711';
-        this.ctx.fillRect(0, 0, this.canvas.width / window.devicePixelRatio, this.canvas.height / window.devicePixelRatio);
+        // We only upload the valid bins (fftSize / 2)
+        const bins = this.analyser.frequencyBinCount;
         
-        // Calculate scaling factors
-        const width = this.canvas.width / window.devicePixelRatio;
-        const height = this.canvas.height / window.devicePixelRatio;
+        // Upload column. xoffset = writeHead, yoffset = 0, width = 1, height = bins
+        // We need to ensure frequencyData is treated as a column. 
+        // texSubImage2D expects data to match dimensions. 
+        // For 1xHeight, the Uint8Array is fine.
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, this.writeHead, 0, 1, bins, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.frequencyData);
+
+        // 2. Draw Quad
+        gl.useProgram(this.program);
         
-        // Get scroll speed factor
+        // Calculate Uniforms
+        const nyquist = this.settings.sampleRate / 2;
+        const minRatio = this.settings.minFreq / nyquist;
+        const maxRatio = this.settings.maxFreq / nyquist;
+        const threshold = this.settings.noiseThreshold / 100.0;
+        
         const scrollSpeed = SCROLL_SPEEDS[this.settings.scrollSpeed];
+        const canvasWidth = this.canvas.width / window.devicePixelRatio;
         
-        // Ensure we're using full width regardless of scroll speed
-        // This fixes the issue with slow scrolling not using full width
-        const totalTimeSlices = Math.ceil(width);
-        const columnWidth = Math.max(1, scrollSpeed); // Ensure minimum width of 1 pixel
+        // Calculate how much of the texture width is visible on screen
+        // If scrollSpeed is 1, we show canvasWidth amount of history.
+        // If scrollSpeed is 2, we show canvasWidth/2 amount of history (zoomed in time).
+        const visibleHistory = canvasWidth / scrollSpeed;
+        const visibleWidthRatio = visibleHistory / this.texWidth;
+
+        gl.uniform1i(gl.getUniformLocation(this.program, 'u_texture'), 0);
+        gl.uniform1f(gl.getUniformLocation(this.program, 'u_offset'), this.writeHead / this.texWidth);
+        gl.uniform1f(gl.getUniformLocation(this.program, 'u_min_freq_ratio'), minRatio);
+        gl.uniform1f(gl.getUniformLocation(this.program, 'u_max_freq_ratio'), maxRatio);
+        gl.uniform1f(gl.getUniformLocation(this.program, 'u_threshold'), threshold);
+        gl.uniform1f(gl.getUniformLocation(this.program, 'u_visible_width'), visibleWidthRatio);
         
-        // Draw each column
-        for (let i = 0; i < Math.min(this.spectrogramHistory.length, totalTimeSlices); i++) {
-            // Calculate x position based on scrollSpeed
-            // This ensures we use the full width of the canvas at any scroll speed
-            const x = width - (i * columnWidth) - columnWidth;
-            
-            // Skip if we're out of bounds
-            if (x < 0) continue;
-            
-            // Get the frequency data for this time slice
-            const freqData = this.spectrogramHistory[i];
-            
-            // Calculate the height of each frequency bin
-            const binHeight = height / freqData.length;
-            
-            // Draw each frequency bin as a colored rectangle
-            for (let j = 0; j < freqData.length; j++) {
-                const amplitude = freqData[j];
-                
-                // Skip drawing if amplitude is 0 (below threshold)
-                if (amplitude === 0) continue;
-                
-                // Calculate y-position (invert to put higher frequencies at the top)
-                const y = height - (j + 1) * binHeight;
-                
-                // Set color based on frequency and use amplitude to control brightness
-                this.ctx.fillStyle = this.getColorForFrequency(
-                    j, 
-                    freqData.length, 
-                    amplitude,
-                    this.settings.minFreq,
-                    this.settings.maxFreq
-                );
-                
-                // Draw the rectangle
-                this.ctx.fillRect(x, y, columnWidth, binHeight + 0.5); // +0.5 to avoid gaps
-            }
-        }
-        
-        // Add subtle grid lines
-        this.drawGridLines(width, height);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+        // 3. Advance Write Head
+        this.writeHead = (this.writeHead + 1) % this.texWidth;
     }
     
     /**
