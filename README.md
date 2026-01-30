@@ -22,10 +22,11 @@ Seeing Sound provides a window into the world of sound by visualizing audio capt
 ## Getting Started
 
 1. Clone this repository
-2. Install dependencies: `./.venv/bin/pip install flask`
-3. Run the application: `./.venv/bin/python main.py`
-4. Open a web browser and navigate to `http://localhost:5000`
-5. Click "Start Listening" to begin visualizing audio from your microphone
+2. Create a virtual environment: `python3 -m venv .venv`
+3. Install dependencies: `./.venv/bin/pip install flask`
+4. Run the application: `./.venv/bin/python main.py`
+5. Open a web browser and navigate to `http://localhost:5000`
+6. Click "Start Listening" to begin visualizing audio from your microphone
 
 ## Usage
 
@@ -48,6 +49,14 @@ Seeing Sound provides a window into the world of sound by visualizing audio capt
 ## Privacy
 
 Seeing Sound processes all audio locally in your browser. No audio data is transmitted to any server or stored permanently.
+
+## Troubleshooting
+
+**"Address already in use" error**
+If you see `Port 5001 is in use by another program`, a previous instance is likely still running. To fix this:
+
+1. Find the process ID: `lsof -i :5001`
+2. Kill the process: `kill -9 <PID>` (replace `<PID>` with the number from step 1)
 
 ## License
 
