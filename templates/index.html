@@ -104,6 +104,99 @@
             display: inline-block;
             margin-left: 5px;
         }
+
+        /* Scale Toggle Switch */
+        .scale-toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .scale-label-text {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: color 0.3s ease;
+        }
+
+        .scale-toggle-container .scale-label-text:first-child {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .scale-toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            cursor: pointer;
+        }
+
+        .scale-toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .scale-toggle-slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 60, 0, 0.2), rgba(255, 120, 0, 0.2));
+            border: 1px solid rgba(255, 60, 0, 0.4);
+            border-radius: 24px;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .scale-toggle-slider::before {
+            content: "";
+            position: absolute;
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 2px;
+            background: linear-gradient(135deg, #fff, #f0f0f0);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .scale-toggle-switch input:checked + .scale-toggle-slider {
+            background: linear-gradient(135deg, rgba(0, 243, 178, 0.3), rgba(119, 0, 255, 0.3));
+            border-color: rgba(0, 243, 178, 0.6);
+        }
+
+        .scale-toggle-switch input:checked + .scale-toggle-slider::before {
+            transform: translateX(20px);
+            background: linear-gradient(135deg, #00f3b2, #7700ff);
+            box-shadow: 0 2px 6px rgba(0, 243, 178, 0.4);
+        }
+
+        .scale-toggle-switch:hover .scale-toggle-slider {
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 8px rgba(255, 60, 0, 0.3);
+        }
+
+        .scale-toggle-switch input:checked:hover + .scale-toggle-slider {
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 8px rgba(0, 243, 178, 0.4);
+        }
+
+        /* Update label colors based on toggle state */
+        .scale-toggle-switch input:checked ~ .scale-label-text:last-child {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .scale-toggle-container:has(input:checked) .scale-label-text:first-child {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .scale-toggle-container:has(input:checked) .scale-label-text:last-child {
+            color: rgba(255, 255, 255, 0.9);
+        }
     </style>
 </head>
 <body>
@@ -194,6 +287,32 @@
                         <div class="card-header">
                             <div class="card-icon">
                                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                    <circle cx="6" cy="18" r="2" fill="currentColor"/>
+                                    <circle cx="18" cy="18" r="2" fill="currentColor"/>
+                                    <circle cx="6" cy="6" r="2" fill="currentColor"/>
+                                    <circle cx="18" cy="6" r="2" fill="currentColor"/>
+                                </svg>
+                            </div>
+                            <h2>Color Scheme</h2>
+                            <div class="scale-toggle-container">
+                                <span class="scale-label-text">Experimental</span>
+                                <label class="scale-toggle-switch">
+                                    <input type="checkbox" id="colormapToggle">
+                                    <span class="scale-toggle-slider"></span>
+                                </label>
+                                <span class="scale-label-text">Viridis</span>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="tooltip">Viridis is a perceptually uniform colormap optimized for spectrograms</div>
+                        </div>
+                    </div>
+
+                    <div class="control-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M2 12H4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                     <path d="M6 12H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                     <path d="M10 12H12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -203,6 +322,14 @@
                                 </svg>
                             </div>
                             <h2>Frequency Range</h2>
+                            <div class="scale-toggle-container">
+                                <span class="scale-label-text">Linear</span>
+                                <label class="scale-toggle-switch">
+                                    <input type="checkbox" id="scaleToggle">
+                                    <span class="scale-toggle-slider"></span>
+                                </label>
+                                <span class="scale-label-text">Log</span>
+                            </div>
                         </div>
                         <div class="card-content">
                             <div class="range-slider-container">
@@ -218,16 +345,16 @@
                                 </div>
                             </div>
                             <div class="preset-buttons">
-                                <button class="preset-btn" data-min="20" data-max="20000">
+                                <button class="preset-btn" data-preset="music">
                                     <span class="preset-icon">🎵</span>
                                     <span class="preset-label">Music</span>
                                 </button>
-                                <button class="preset-btn" data-min="20000" data-max="40000">
+                                <button class="preset-btn" data-preset="ultrasound">
                                     <span class="preset-icon">🦇</span>
                                     <span class="preset-label">Ultrasounds</span>
                                 </button>
-                                <button class="preset-btn" data-min="0" data-max="4000">
-                                    <span class="preset-icon">🔊</span>
+                                <button class="preset-btn" data-preset="default">
+                                    <span class="preset-icon">🗣️</span>
                                     <span class="preset-label">Default</span>
                                 </button>
                             </div>

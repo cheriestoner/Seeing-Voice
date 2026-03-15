@@ -13,6 +13,12 @@ const SCROLL_SPEEDS = {
     'fast': 3
 };
 
+const PRESETS = {
+  default: { minFreq: 0, maxFreq: 4000, scale: 'linear' },
+  music: { minFreq: 20, maxFreq: 20000, scale: 'log' },
+  ultrasound: { minFreq: 20000, maxFreq: 40000, scale: 'linear' }
+};
+
 // Main application class
 class SeeingSound {
     constructor() {
@@ -29,7 +35,9 @@ class SeeingSound {
             maxFreq: 4000,
             noiseThreshold: 0,
             scrollSpeed: 'medium',
-            sampleRate: 44100 // Will be updated with actual sample rate
+            sampleRate: 44100, // Will be updated with actual sample rate
+            scale: 'linear', // 'linear' or 'log'
+            colormap: 'experimental' // 'experimental' or 'viridis'
         };
         
         // Buffers for audio data
@@ -95,16 +103,30 @@ class SeeingSound {
             uniform float u_max_freq_ratio;
             uniform float u_threshold;
             uniform float u_visible_width;
+            uniform int u_scale_mode; // 0 = linear, 1 = log
+            uniform int u_colormap; // 0 = experimental, 1 = viridis
             varying vec2 v_uv;
 
-            vec3 getColor(float freqRatio, float amplitude) {
+            vec3 viridis(float t) {
+                const vec3 c0 = vec3(0.2777273272234177, 0.005407344544966578, 0.3340998053353061);
+                const vec3 c1 = vec3(0.1050930431085774, 1.404613529898575, 1.384590162594685);
+                const vec3 c2 = vec3(-0.3308618287255563, 0.214847559468213, 0.09509516302823659);
+                const vec3 c3 = vec3(-4.634230498983486, -5.799100973351585, -19.33244095627987);
+                const vec3 c4 = vec3(6.228269936347081, 14.17993336680509, 56.69055260068105);
+                const vec3 c5 = vec3(4.776384997670288, -13.74514537774601, -65.35303263337234);
+                const vec3 c6 = vec3(-5.435455855934631, 4.645852612178535, 26.3124352495832);
+
+                return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
+            }
+
+            vec3 getColorExperimental(float freqRatio, float amplitude) {
                 // Replicate JS gradient: Deep Red -> Bright Red -> Orange -> Yellow
                 vec3 c0 = vec3(0.39, 0.0, 0.0); // 100,0,0
                 vec3 c1 = vec3(1.0, 0.0, 0.0);  // 255,0,0
                 vec3 c2 = vec3(1.0, 0.39, 0.0); // 255,100,0
                 vec3 c3 = vec3(1.0, 0.78, 0.0); // 255,200,0
                 vec3 c4 = vec3(1.0, 1.0, 0.2);  // 255,255,50
-                
+
                 vec3 color;
                 if (freqRatio < 0.25) {
                     color = mix(c0, c1, freqRatio * 4.0);
@@ -115,33 +137,79 @@ class SeeingSound {
                 } else {
                     color = mix(c3, c4, (freqRatio - 0.75) * 4.0);
                 }
-                
+
                 // Amplitude brightness & Threshold
                 if (amplitude < u_threshold) return vec3(0.027, 0.027, 0.067); // #070711
-                
+
                 float brightness = pow(amplitude, 0.5); // Gamma
                 brightness = max(brightness, 0.05);
-                
+
                 return color * brightness;
             }
 
+            vec3 getColorViridis(float freqRatio, float amplitude) {
+                // Threshold check - same background color
+                if (amplitude < u_threshold) return vec3(0.027, 0.027, 0.067);
+
+                // Direct amplitude to color mapping
+                // return viridis(amplitude);
+                float brightness = pow(amplitude, 0.5);
+                brightness = max(brightness, 0.05);
+                return viridis(amplitude) * brightness;
+            }
+
+            vec3 getColor(float freqRatio, float amplitude) {
+                if (u_colormap == 0) {
+                    return getColorExperimental(freqRatio, amplitude);
+                } else {
+                    return getColorViridis(freqRatio, amplitude);
+                }
+            }
+
             void main() {
-                // X mapping (Time Ring Buffer)
-                // u_offset is the write head. We want right edge (1.0) to be u_offset.
-                float x = u_offset - (1.0 - v_uv.x) * u_visible_width;
+                vec3 backgroundColor = vec3(0.027, 0.027, 0.067); // #070711
+
+                // Right half is empty - Visualization starts from the center to the left
+                if (v_uv.x > 0.5) {
+                    gl_FragColor = vec4(backgroundColor, 1.0);
+                    return;
+                }
+
+                // X mapping: center (v_uv.x=0.5) = newest, left edge = oldest
+                // Map v_uv.x in [0, 0.5] -> texture x in [u_offset - u_visible_width, u_offset]
+                float x = u_offset + (2.0 * v_uv.x - 1.0) * u_visible_width;
                 x = fract(x);
-                
+
                 // Y mapping (Frequency Zoom)
-                float y = u_min_freq_ratio + v_uv.y * (u_max_freq_ratio - u_min_freq_ratio);
-                
+                float y;
+                if (u_scale_mode == 1) {
+                    // Logarithmic scale
+                    float safeMin = max(u_min_freq_ratio, 0.001);
+                    float logMin = log(safeMin);
+                    float logMax = log(u_max_freq_ratio);
+                    float logY = logMin + v_uv.y * (logMax - logMin);
+                    y = exp(logY);
+                } else {
+                    // Linear scale
+                    y = u_min_freq_ratio + v_uv.y * (u_max_freq_ratio - u_min_freq_ratio);
+                }
+
                 float amp = texture2D(u_texture, vec2(x, y)).r;
                 vec3 color = getColor(v_uv.y, amp);
-                
-                // Simple Grid Lines
+
+                // Grid lines (horizontal freq lines + vertical time lines in left half)
                 if (mod(v_uv.y * 8.0, 1.0) < 0.02 || mod(v_uv.x * 10.0, 1.0) < 0.02) {
                     color += vec3(0.1);
                 }
-                
+
+                // Fade out on the far left (oldest data)
+                float fadeAlpha = 1.0;
+                float fadeOutWidth = 0.12;
+                if (v_uv.x < fadeOutWidth) {
+                    fadeAlpha *= smoothstep(0.0, fadeOutWidth, v_uv.x);
+                }
+
+                color = mix(backgroundColor, color, fadeAlpha);
                 gl_FragColor = vec4(color, 1.0);
             }
         `;
@@ -221,41 +289,72 @@ class SeeingSound {
             this.settings.minFreq = parseInt(e.target.value);
             document.getElementById('minFreqLabel').textContent = `${this.settings.minFreq} Hz`;
             this.updateRangeSliderTrack();
+            this.updateFrequencyScale(); // update when slider min changes
         });
         
         document.getElementById('maxFreq').addEventListener('input', (e) => {
             this.settings.maxFreq = parseInt(e.target.value);
             document.getElementById('maxFreqLabel').textContent = `${this.settings.maxFreq} Hz`;
             this.updateRangeSliderTrack();
+            this.updateFrequencyScale(); // update when slider max changes
         });
+
+        // Scale toggle checkbox
+        const scaleToggle = document.getElementById('scaleToggle');
+        if (scaleToggle) {
+            scaleToggle.addEventListener('change', (e) => {
+                this.settings.scale = e.target.checked ? 'log' : 'linear';
+                this.updateFrequencyScale();
+            });
+        }
         
         // Frequency preset buttons
         document.querySelectorAll('.preset-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const minFreq = parseInt(e.currentTarget.dataset.min);
-                const maxFreq = parseInt(e.currentTarget.dataset.max);
-                
+                const presetName = e.currentTarget.dataset.preset;
+                const preset = PRESETS[presetName];
+
+                if (!preset) {
+                    console.error(`Preset "${presetName}" not found`);
+                    return;
+                }
+
                 // Add animation class
                 e.currentTarget.classList.add('active');
                 setTimeout(() => {
                     e.currentTarget.classList.remove('active');
                 }, 300);
-                
-                this.settings.minFreq = minFreq;
-                this.settings.maxFreq = maxFreq;
-                
+
+                this.settings.minFreq = preset.minFreq;
+                this.settings.maxFreq = preset.maxFreq;
+                this.settings.scale = preset.scale;
+
                 // Update slider values and labels
-                document.getElementById('minFreq').value = minFreq;
-                document.getElementById('maxFreq').value = maxFreq;
-                document.getElementById('minFreqLabel').textContent = `${minFreq} Hz`;
-                document.getElementById('maxFreqLabel').textContent = `${maxFreq} Hz`;
+                document.getElementById('minFreq').value = preset.minFreq;
+                document.getElementById('maxFreq').value = preset.maxFreq;
+                document.getElementById('minFreqLabel').textContent = `${preset.minFreq} Hz`;
+                document.getElementById('maxFreqLabel').textContent = `${preset.maxFreq} Hz`;
+
+                // Update toggle checkbox state
+                if (scaleToggle) {
+                    scaleToggle.checked = preset.scale === 'log';
+                }
+
                 this.updateRangeSliderTrack();
-                
+
                 // Update the frequency scale
                 this.updateFrequencyScale();
             });
         });
-        
+
+        // Colormap toggle checkbox
+        const colormapToggle = document.getElementById('colormapToggle');
+        if (colormapToggle) {
+            colormapToggle.addEventListener('change', (e) => {
+                this.settings.colormap = e.target.checked ? 'viridis' : 'experimental';
+            });
+        }
+
         // Noise threshold control
         document.getElementById('noiseThreshold').addEventListener('input', (e) => {
             this.settings.noiseThreshold = parseInt(e.target.value);
@@ -357,68 +456,49 @@ class SeeingSound {
         const scaleLabels = document.querySelectorAll('.frequency-scale .scale-label');
         const min = this.settings.minFreq;
         const max = this.settings.maxFreq;
-        const range = max - min;
         
         // Create logarithmic scale points
         const scalePoints = [];
-        if (max <= 4000) {
-            // Linear scale for lower frequencies
-            scalePoints.push(
-                max,
-                max - range * 0.125,
-                max - range * 0.25,
-                max - range * 0.375,
-                max - range * 0.5,
-                max - range * 0.625,
-                max - range * 0.75,
-                min
-            );
-        } else if (max <= 20000) {
-            // Log scale for music range
-            scalePoints.push(
-                max,
-                Math.round(max / 2),
-                Math.round(max / 4),
-                Math.round(max / 8),
-                Math.round(max / 16),
-                Math.round(max / 32),
-                Math.round(max / 64),
-                min
-            );
+        const count = 8;
+        
+        if (this.settings.scale === 'log') {
+            // Logarithmic scale
+            // Ensure min is positive for log scale calculation
+            const safeMin = Math.max(min, 1);
+            const logMin = Math.log(safeMin);
+            const logMax = Math.log(max);
+            const logRange = logMax - logMin;
+            
+            for (let i = 0; i < count; i++) {
+                const t = i / (count - 1);
+                const logValue = logMax - t * logRange;
+                scalePoints.push(Math.exp(logValue));
+            }
         } else {
-            // Ultra high range
-            scalePoints.push(
-                max,
-                Math.round(max * 0.75),
-                Math.round(max * 0.5),
-                Math.round(max * 0.25),
-                20000,
-                10000,
-                5000,
-                min
-            );
+            // Linear scale
+            const range = max - min;
+            for (let i = 0; i < count; i++) {
+                const t = i / (count - 1);
+                scalePoints.push(max - t * range);
+            }
         }
         
         // Update labels
         scaleLabels.forEach((label, i) => {
             const value = scalePoints[i];
             if (value >= 1000) {
-                label.textContent = `${value / 1000} kHz`;
+                label.textContent = `${(value / 1000).toLocaleString('en-US', {maximumFractionDigits: 1})} kHz`;
             } else {
-                label.textContent = `${value} Hz`;
+                label.textContent = `${Math.round(value)} Hz`;
             }
             
             // Add special highlighting for the 1/4 point
-            if (value >= min + range * 0.24 && value <= min + range * 0.26) {
-                label.classList.add('highlight');
-            } else {
-                label.classList.remove('highlight');
-            }
+            label.classList.remove('highlight');
         });
     }
     
     /**
-     * Update the noise visualization
+     * Update noise clip below threshold
      */
     updateNoiseVisualization() {
         const noiseBars = document.querySelectorAll('.noise-bar');
@@ -444,22 +524,23 @@ class SeeingSound {
         // Get the display pixel ratio
         const dpr = window.devicePixelRatio || 1;
         
-        // Get the CSS size of the canvas
+        // Get canvas size in CSS pixels
         const rect = this.canvas.getBoundingClientRect();
         
         // Set the canvas dimensions accounting for the device pixel ratio
         this.canvasWidth = rect.width * dpr;
         this.canvasHeight = rect.height * dpr;
         
+        // Set the actual drawing buffer size
         this.canvas.width = this.canvasWidth;
         this.canvas.height = this.canvasHeight;
         
-        // Update WebGL viewport
+        // Tell WebGL to render into the full buffer
         if (this.gl) {
             this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
         }
         
-        // Set the canvas backing store size to match CSS size
+        // Keep the CSS size unchanged
         this.canvas.style.width = `${rect.width}px`;
         this.canvas.style.height = `${rect.height}px`;
     }
@@ -816,13 +897,18 @@ class SeeingSound {
         const visibleHistory = canvasWidth / scrollSpeed;
         const visibleWidthRatio = visibleHistory / this.texWidth;
 
+        const scaleMode = this.settings.scale === 'log' ? 1 : 0;
+        const colormapMode = this.settings.colormap === 'viridis' ? 1 : 0;
+
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_texture'), 0);
         gl.uniform1f(gl.getUniformLocation(this.program, 'u_offset'), this.writeHead / this.texWidth);
         gl.uniform1f(gl.getUniformLocation(this.program, 'u_min_freq_ratio'), minRatio);
         gl.uniform1f(gl.getUniformLocation(this.program, 'u_max_freq_ratio'), maxRatio);
         gl.uniform1f(gl.getUniformLocation(this.program, 'u_threshold'), threshold);
         gl.uniform1f(gl.getUniformLocation(this.program, 'u_visible_width'), visibleWidthRatio);
-        
+        gl.uniform1i(gl.getUniformLocation(this.program, 'u_scale_mode'), scaleMode);
+        gl.uniform1i(gl.getUniformLocation(this.program, 'u_colormap'), colormapMode);
+
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
         // 3. Advance Write Head
