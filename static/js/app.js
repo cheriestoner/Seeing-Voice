@@ -7,6 +7,8 @@
  */
 
 // Constants for visualization
+const MIN_THRESHOLD = 3e-3; // Minimum shader threshold — prevents near-silent pixels from showing palette color
+
 const SCROLL_SPEEDS = {
     'slow': 1,
     'medium': 2,
@@ -37,7 +39,7 @@ class SeeingSound {
             scrollSpeed: 'medium',
             sampleRate: 44100, // Will be updated with actual sample rate
             scale: 'linear', // 'linear' or 'log'
-            colormap: 'experimental' // 'experimental' or 'viridis'
+            colormap: 'viridis' // 'experimental' or 'viridis'
         };
         
         // Buffers for audio data
@@ -104,7 +106,7 @@ class SeeingSound {
             uniform float u_threshold;
             uniform float u_visible_width;
             uniform int u_scale_mode; // 0 = linear, 1 = log
-            uniform int u_colormap; // 0 = experimental, 1 = viridis
+            uniform int u_colormap; // 0 = experimental, 1 = viridis, 2 = greyscale
             varying vec2 v_uv;
 
             vec3 viridis(float t) {
@@ -158,11 +160,20 @@ class SeeingSound {
                 return viridis(amplitude) * brightness;
             }
 
+            vec3 getColorGreyscale(float freqRatio, float amplitude) {
+                if (amplitude < u_threshold) return vec3(0.027, 0.027, 0.067);
+                float brightness = pow(amplitude, 0.5);
+                brightness = max(brightness, 0.05);
+                return vec3(brightness);
+            }
+
             vec3 getColor(float freqRatio, float amplitude) {
                 if (u_colormap == 0) {
                     return getColorExperimental(freqRatio, amplitude);
-                } else {
+                } else if (u_colormap == 1) {
                     return getColorViridis(freqRatio, amplitude);
+                } else {
+                    return getColorGreyscale(freqRatio, amplitude);
                 }
             }
 
@@ -204,9 +215,15 @@ class SeeingSound {
 
                 // Fade out on the far left (oldest data)
                 float fadeAlpha = 1.0;
-                float fadeOutWidth = 0.12;
+                float fadeOutWidth = 0.32;
                 if (v_uv.x < fadeOutWidth) {
                     fadeAlpha *= smoothstep(0.0, fadeOutWidth, v_uv.x);
+                }
+
+                // Tiny blur at the right edge (newest data) — softens without visible lag
+                float edgeBlur = 0.02;
+                if (v_uv.x > (0.5 - edgeBlur)) {
+                    fadeAlpha *= smoothstep(0.5, 0.5 - edgeBlur, v_uv.x);
                 }
 
                 color = mix(backgroundColor, color, fadeAlpha);
@@ -347,13 +364,12 @@ class SeeingSound {
             });
         });
 
-        // Colormap toggle checkbox
-        const colormapToggle = document.getElementById('colormapToggle');
-        if (colormapToggle) {
-            colormapToggle.addEventListener('change', (e) => {
-                this.settings.colormap = e.target.checked ? 'viridis' : 'experimental';
+        // Colormap radio buttons
+        document.querySelectorAll('input[name="colormap-radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.settings.colormap = e.target.value;
             });
-        }
+        });
 
         // Noise threshold control
         document.getElementById('noiseThreshold').addEventListener('input', (e) => {
@@ -886,7 +902,7 @@ class SeeingSound {
         const heightScale = bins / this.texHeight;
         const minRatio = (this.settings.minFreq / nyquist) * heightScale;
         const maxRatio = (this.settings.maxFreq / nyquist) * heightScale;
-        const threshold = this.settings.noiseThreshold / 100.0;
+        const threshold = Math.max(this.settings.noiseThreshold / 100.0, MIN_THRESHOLD);
         
         const scrollSpeed = SCROLL_SPEEDS[this.settings.scrollSpeed];
         const canvasWidth = this.canvas.width / window.devicePixelRatio;
@@ -898,7 +914,7 @@ class SeeingSound {
         const visibleWidthRatio = visibleHistory / this.texWidth;
 
         const scaleMode = this.settings.scale === 'log' ? 1 : 0;
-        const colormapMode = this.settings.colormap === 'viridis' ? 1 : 0;
+        const colormapMode = { experimental: 0, viridis: 1, greyscale: 2 }[this.settings.colormap] ?? 1;
 
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_texture'), 0);
         gl.uniform1f(gl.getUniformLocation(this.program, 'u_offset'), this.writeHead / this.texWidth);

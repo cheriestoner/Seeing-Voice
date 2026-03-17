@@ -295,17 +295,25 @@
                                 </svg>
                             </div>
                             <h2>Color Scheme</h2>
-                            <div class="scale-toggle-container">
-                                <span class="scale-label-text">Experimental</span>
-                                <label class="scale-toggle-switch">
-                                    <input type="checkbox" id="colormapToggle">
-                                    <span class="scale-toggle-slider"></span>
-                                </label>
-                                <span class="scale-label-text">Viridis</span>
-                            </div>
                         </div>
                         <div class="card-content">
-                            <div class="tooltip">Viridis is a perceptually uniform colormap optimized for spectrograms</div>
+                            <div class="colormap-options">
+                                <label class="colormap-option">
+                                    <input type="radio" name="colormap-radio" value="viridis" checked>
+                                    <span class="colormap-swatch viridis-swatch"></span>
+                                    <span class="colormap-label">Viridis</span>
+                                </label>
+                                <label class="colormap-option">
+                                    <input type="radio" name="colormap-radio" value="experimental">
+                                    <span class="colormap-swatch experimental-swatch"></span>
+                                    <span class="colormap-label">Experimental</span>
+                                </label>
+                                <label class="colormap-option">
+                                    <input type="radio" name="colormap-radio" value="greyscale">
+                                    <span class="colormap-swatch greyscale-swatch"></span>
+                                    <span class="colormap-label">Greyscale</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
 
