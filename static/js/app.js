@@ -38,6 +38,7 @@ class SeeingSound {
             maxFreq: 4000,
             noiseThreshold: 0,
             scrollSpeed: 'medium',
+            scrollDirection: 'left',
             sampleRate: 44100, // Will be updated with actual sample rate
             scale: 'linear', // 'linear' or 'log'
             colormap: 'viridis' // 'experimental' or 'viridis'
@@ -108,6 +109,7 @@ class SeeingSound {
             uniform float u_visible_width;
             uniform int u_scale_mode; // 0 = linear, 1 = log
             uniform int u_colormap; // 0 = experimental, 1 = viridis, 2 = greyscale
+            uniform int u_flip;    // 0 = scroll left (←), 1 = scroll right (→)
             varying vec2 v_uv;
 
             vec3 viridis(float t) {
@@ -181,14 +183,17 @@ class SeeingSound {
             void main() {
                 vec3 backgroundColor = vec3(0.027, 0.027, 0.067); // #070711
 
+                // Flip x-axis for right-scrolling direction
+                float uvx = u_flip == 1 ? (1.0 - v_uv.x) : v_uv.x;
+
                 // Right portion is empty — cursor position controlled by CURSOR_X
-                if (v_uv.x > ${CURSOR_X}) {
+                if (uvx > ${CURSOR_X}) {
                     gl_FragColor = vec4(backgroundColor, 1.0);
                     return;
                 }
 
-                // X mapping: cursor (v_uv.x=CURSOR_X) = newest, left edge = oldest
-                float x = u_offset + (v_uv.x / ${CURSOR_X} - 1.0) * u_visible_width;
+                // X mapping: cursor (uvx=CURSOR_X) = newest, left edge = oldest
+                float x = u_offset + (uvx / ${CURSOR_X} - 1.0) * u_visible_width;
                 x = fract(x);
 
                 // Y mapping (Frequency Zoom)
@@ -210,27 +215,22 @@ class SeeingSound {
 
                 // Spawn flash — exponential brightness boost at the newest data edge (skip background)
                 if (amp >= u_threshold) {
-                    float distFromEdge = ${CURSOR_X} - v_uv.x;
+                    float distFromEdge = ${CURSOR_X} - uvx;
                     float spawnBoost = 1.0 + 2.5 * exp(-distFromEdge * 40.0);
                     color *= spawnBoost;
                 }
 
-                // // Grid lines (horizontal freq lines + vertical time lines in left half)
-                // if (mod(v_uv.y * 8.0, 1.0) < 0.02 || mod(v_uv.x * 10.0, 1.0) < 0.02) {
-                //     color += vec3(0.1);
-                // }
-
                 // Fade out on the far left (oldest data)
                 float fadeAlpha = 1.0;
                 float fadeOutWidth = 0.32;
-                if (v_uv.x < fadeOutWidth) {
-                    fadeAlpha *= smoothstep(0.0, fadeOutWidth, v_uv.x);
+                if (uvx < fadeOutWidth) {
+                    fadeAlpha *= smoothstep(0.0, fadeOutWidth, uvx);
                 }
 
                 // Tiny blur at the right edge (newest data) — softens without visible lag
                 float edgeBlur = 0.02;
-                if (v_uv.x > (${CURSOR_X} - edgeBlur)) {
-                    fadeAlpha *= smoothstep(${CURSOR_X}, ${CURSOR_X} - edgeBlur, v_uv.x);
+                if (uvx > (${CURSOR_X} - edgeBlur)) {
+                    fadeAlpha *= smoothstep(${CURSOR_X}, ${CURSOR_X} - edgeBlur, uvx);
                 }
 
                 color = mix(backgroundColor, color, fadeAlpha);
@@ -396,6 +396,14 @@ class SeeingSound {
                 this.updateSegmentedControlIndicators();
             });
         });
+
+        // Scroll direction control
+        document.querySelectorAll('input[name="direction-radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.settings.scrollDirection = e.target.value;
+                this.updateSegmentedControlIndicators();
+            });
+        });
         
         // Handle window resize
         window.addEventListener('resize', () => {
@@ -418,16 +426,17 @@ class SeeingSound {
      */
     updateSegmentedControlIndicators() {
         const update = (name, value) => {
-            const radio = document.querySelector(`input[name="${name}"][value="${value}"]:checked`);
-            if (!radio) return;
-            const label = radio.nextElementSibling;
-            const indicator = radio.closest('.segmented-control').querySelector('.selection-indicator');
-            indicator.style.width = `${label.offsetWidth}px`;
-            indicator.style.transform = `translateX(${label.offsetLeft}px)`;
+            const radios = [...document.querySelectorAll(`input[name="${name}"]`)];
+            const checked = document.querySelector(`input[name="${name}"][value="${value}"]:checked`);
+            if (!checked) return;
+            const index = radios.indexOf(checked);
+            const indicator = checked.closest('.segmented-control').querySelector('.selection-indicator');
+            indicator.style.transform = `translateX(calc(${index} * 100%))`;
         };
 
         update('fft-radio', this.settings.fftSize);
         update('speed-radio', this.settings.scrollSpeed);
+        update('direction-radio', this.settings.scrollDirection);
         update('scale-radio', this.settings.scale);
     }
     
@@ -473,7 +482,7 @@ class SeeingSound {
         
         // Create logarithmic scale points
         const scalePoints = [];
-        const count = 8;
+        const count = 9;
         
         if (this.settings.scale === 'log') {
             // Logarithmic scale
@@ -922,6 +931,7 @@ class SeeingSound {
         gl.uniform1f(gl.getUniformLocation(this.program, 'u_visible_width'), visibleWidthRatio);
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_scale_mode'), scaleMode);
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_colormap'), colormapMode);
+        gl.uniform1i(gl.getUniformLocation(this.program, 'u_flip'), this.settings.scrollDirection === 'right' ? 1 : 0);
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 

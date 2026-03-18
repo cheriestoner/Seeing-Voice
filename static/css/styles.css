@@ -290,7 +290,7 @@ main {
     flex-direction: column;
     padding: 0 var(--space-lg) var(--space-lg);
     gap: var(--space-md);
-    max-width: 1400px;
+    max-width: min(95vw, 1920px);
     margin: 0 auto;
     width: 100%;
 }
@@ -303,7 +303,7 @@ main {
 
 .spectrogram-container {
     width: 100%;
-    height: 480px;
+    height: clamp(380px, 45vh, 800px);
     /* background-color: rgba(10, 10, 20, 0.7); */
     border-radius: var(--radius-lg);
     overflow: hidden;
@@ -398,27 +398,45 @@ main {
     padding: var(--space-md);
 }
 
-/* Segmented control (FFT size) */
+/* -----------------------------------------------
+   Segmented control — base component
+   Size modifiers: --sm, --md (default), --lg
+   Layout placement (margin/alignment) kept outside
+----------------------------------------------- */
 .segmented-control {
+    --sc-padding: 4px;
+    --sc-label-v: var(--space-sm);
+    --sc-label-h: var(--space-md);
+    --sc-font-size: 0.9rem;
+    --sc-count: 3; /* override per instance via inline style */
+
     display: flex;
     position: relative;
     background-color: var(--input-background);
     border-radius: var(--radius-round);
-    padding: var(--space-xs);
+    padding: var(--sc-padding);
     overflow: hidden;
 }
 
-.card-content .segmented-control {
-    margin-bottom: var(--space-md);
+.segmented-control--sm {
+    --sc-padding: 2px;
+    --sc-label-v: 2px;
+    --sc-label-h: 8px;
+    --sc-font-size: 0.75rem;
 }
 
-.card-header .segmented-control {
-    margin-left: auto;
+.segmented-control--md {
+    --sc-padding: 4px;
+    --sc-label-v: var(--space-sm);
+    --sc-label-h: var(--space-md);
+    --sc-font-size: 0.9rem;
 }
 
-.card-header .segmented-control label {
-    font-size: 0.75rem;
-    padding: 2px 8px;
+.segmented-control--lg {
+    --sc-padding: 6px;
+    --sc-label-v: var(--space-sm);
+    --sc-label-h: var(--space-xl);
+    --sc-font-size: 1rem;
 }
 
 .segmented-control input[type="radio"] {
@@ -428,8 +446,8 @@ main {
 .segmented-control label {
     flex: 1;
     text-align: center;
-    padding: var(--space-sm) var(--space-md);
-    font-size: 0.9rem;
+    padding: var(--sc-label-v) var(--sc-label-h);
+    font-size: var(--sc-font-size);
     font-weight: 500;
     color: var(--text-dim);
     cursor: pointer;
@@ -446,13 +464,37 @@ main {
 
 .selection-indicator {
     position: absolute;
-    height: calc(100% - var(--space-xs) * 2);
-    top: var(--space-xs);
+    left: var(--sc-padding);
+    top: var(--sc-padding);
+    width: calc((100% - var(--sc-padding) * 2) / var(--sc-count));
+    height: calc(100% - var(--sc-padding) * 2);
     z-index: 1;
     border-radius: var(--radius-round);
     background: linear-gradient(135deg, var(--primary-gradient-start), var(--primary-gradient-end));
     box-shadow: 0 2px 8px rgba(255, 60, 0, 0.3);
-    transition: transform var(--transition-bounce), width var(--transition-medium);
+    transition: transform var(--transition-bounce);
+}
+
+/* Small label above a segmented control within a card */
+.control-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: var(--space-xs);
+}
+
+.card-content .segmented-control + .control-label {
+    margin-top: var(--space-sm);
+}
+
+/* Layout placement — not part of the component */
+.card-content .segmented-control {
+    margin-bottom: var(--space-md);
+}
+
+.card-header .segmented-control {
+    margin-left: auto;
 }
 
 
