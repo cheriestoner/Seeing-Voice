@@ -405,8 +405,20 @@ main {
     background-color: var(--input-background);
     border-radius: var(--radius-round);
     padding: var(--space-xs);
-    margin-bottom: var(--space-md);
     overflow: hidden;
+}
+
+.card-content .segmented-control {
+    margin-bottom: var(--space-md);
+}
+
+.card-header .segmented-control {
+    margin-left: auto;
+}
+
+.card-header .segmented-control label {
+    font-size: 0.75rem;
+    padding: 2px 8px;
 }
 
 .segmented-control input[type="radio"] {
@@ -443,38 +455,6 @@ main {
     transition: transform var(--transition-bounce), width var(--transition-medium);
 }
 
-/* Speed control (same improvements as segmented control) */
-.speed-control {
-    display: flex;
-    position: relative;
-    background-color: var(--input-background);
-    border-radius: var(--radius-round);
-    padding: var(--space-xs);
-    overflow: hidden;
-}
-
-.speed-control input[type="radio"] {
-    display: none;
-}
-
-.speed-control label {
-    flex: 1;
-    text-align: center;
-    padding: var(--space-sm) var(--space-xs);
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--text-dim);
-    cursor: pointer;
-    position: relative;
-    z-index: 2;
-    transition: color var(--transition-fast);
-    border-radius: var(--radius-round);
-    white-space: nowrap;
-}
-
-.speed-control input[type="radio"]:checked + label {
-    color: var(--text-bright);
-}
 
 /* Tooltips */
 .tooltip {
@@ -835,8 +815,7 @@ footer {
         font-size: 2rem;
     }
     
-    .segmented-control label,
-    .speed-control label {
+    .segmented-control label {
         font-size: 0.75rem;
         padding: var(--space-xs);
     }

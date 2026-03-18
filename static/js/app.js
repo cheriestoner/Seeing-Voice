@@ -8,11 +8,12 @@
 
 // Constants for visualization
 const MIN_THRESHOLD = 3e-3; // Minimum shader threshold — prevents near-silent pixels from showing palette color
+const CURSOR_X = 0.67;      // Horizontal position of the newest-data cursor (0 = left, 1 = right)
 
 const SCROLL_SPEEDS = {
-    'slow': 1,
-    'medium': 2,
-    'fast': 3
+    'slow': 3,
+    'medium': 6,
+    'fast': 12
 };
 
 const PRESETS = {
@@ -180,15 +181,14 @@ class SeeingSound {
             void main() {
                 vec3 backgroundColor = vec3(0.027, 0.027, 0.067); // #070711
 
-                // Right half is empty - Visualization starts from the center to the left
-                if (v_uv.x > 0.5) {
+                // Right portion is empty — cursor position controlled by CURSOR_X
+                if (v_uv.x > ${CURSOR_X}) {
                     gl_FragColor = vec4(backgroundColor, 1.0);
                     return;
                 }
 
-                // X mapping: center (v_uv.x=0.5) = newest, left edge = oldest
-                // Map v_uv.x in [0, 0.5] -> texture x in [u_offset - u_visible_width, u_offset]
-                float x = u_offset + (2.0 * v_uv.x - 1.0) * u_visible_width;
+                // X mapping: cursor (v_uv.x=CURSOR_X) = newest, left edge = oldest
+                float x = u_offset + (v_uv.x / ${CURSOR_X} - 1.0) * u_visible_width;
                 x = fract(x);
 
                 // Y mapping (Frequency Zoom)
@@ -208,10 +208,17 @@ class SeeingSound {
                 float amp = texture2D(u_texture, vec2(x, y)).r;
                 vec3 color = getColor(v_uv.y, amp);
 
-                // Grid lines (horizontal freq lines + vertical time lines in left half)
-                if (mod(v_uv.y * 8.0, 1.0) < 0.02 || mod(v_uv.x * 10.0, 1.0) < 0.02) {
-                    color += vec3(0.1);
+                // Spawn flash — exponential brightness boost at the newest data edge (skip background)
+                if (amp >= u_threshold) {
+                    float distFromEdge = ${CURSOR_X} - v_uv.x;
+                    float spawnBoost = 1.0 + 2.5 * exp(-distFromEdge * 40.0);
+                    color *= spawnBoost;
                 }
+
+                // // Grid lines (horizontal freq lines + vertical time lines in left half)
+                // if (mod(v_uv.y * 8.0, 1.0) < 0.02 || mod(v_uv.x * 10.0, 1.0) < 0.02) {
+                //     color += vec3(0.1);
+                // }
 
                 // Fade out on the far left (oldest data)
                 float fadeAlpha = 1.0;
@@ -222,8 +229,8 @@ class SeeingSound {
 
                 // Tiny blur at the right edge (newest data) — softens without visible lag
                 float edgeBlur = 0.02;
-                if (v_uv.x > (0.5 - edgeBlur)) {
-                    fadeAlpha *= smoothstep(0.5, 0.5 - edgeBlur, v_uv.x);
+                if (v_uv.x > (${CURSOR_X} - edgeBlur)) {
+                    fadeAlpha *= smoothstep(${CURSOR_X}, ${CURSOR_X} - edgeBlur, v_uv.x);
                 }
 
                 color = mix(backgroundColor, color, fadeAlpha);
@@ -316,14 +323,14 @@ class SeeingSound {
             this.updateFrequencyScale(); // update when slider max changes
         });
 
-        // Scale toggle checkbox
-        const scaleToggle = document.getElementById('scaleToggle');
-        if (scaleToggle) {
-            scaleToggle.addEventListener('change', (e) => {
-                this.settings.scale = e.target.checked ? 'log' : 'linear';
+        // Scale segmented control
+        document.querySelectorAll('input[name="scale-radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.settings.scale = e.target.value;
+                this.updateSegmentedControlIndicators();
                 this.updateFrequencyScale();
             });
-        }
+        });
         
         // Frequency preset buttons
         document.querySelectorAll('.preset-btn').forEach(btn => {
@@ -352,10 +359,10 @@ class SeeingSound {
                 document.getElementById('minFreqLabel').textContent = `${preset.minFreq} Hz`;
                 document.getElementById('maxFreqLabel').textContent = `${preset.maxFreq} Hz`;
 
-                // Update toggle checkbox state
-                if (scaleToggle) {
-                    scaleToggle.checked = preset.scale === 'log';
-                }
+                // Update scale radio
+                const scaleRadio = document.querySelector(`input[name="scale-radio"][value="${preset.scale}"]`);
+                if (scaleRadio) scaleRadio.checked = true;
+                this.updateSegmentedControlIndicators();
 
                 this.updateRangeSliderTrack();
 
@@ -410,27 +417,18 @@ class SeeingSound {
      * Update segmented control indicators
      */
     updateSegmentedControlIndicators() {
-        // FFT size indicator
-        const fftRadio = document.querySelector(`input[name="fft-radio"][value="${this.settings.fftSize}"]:checked`);
-        if (fftRadio) {
-            const fftLabel = fftRadio.nextElementSibling;
-            const fftIndicator = fftRadio.closest('.segmented-control').querySelector('.selection-indicator');
-            
-            // Position and size the indicator
-            fftIndicator.style.width = `${fftLabel.offsetWidth}px`;
-            fftIndicator.style.transform = `translateX(${fftLabel.offsetLeft}px)`;
-        }
-        
-        // Scroll speed indicator
-        const speedRadio = document.querySelector(`input[name="speed-radio"][value="${this.settings.scrollSpeed}"]:checked`);
-        if (speedRadio) {
-            const speedLabel = speedRadio.nextElementSibling;
-            const speedIndicator = speedRadio.closest('.speed-control').querySelector('.selection-indicator');
-            
-            // Position and size the indicator
-            speedIndicator.style.width = `${speedLabel.offsetWidth}px`;
-            speedIndicator.style.transform = `translateX(${speedLabel.offsetLeft}px)`;
-        }
+        const update = (name, value) => {
+            const radio = document.querySelector(`input[name="${name}"][value="${value}"]:checked`);
+            if (!radio) return;
+            const label = radio.nextElementSibling;
+            const indicator = radio.closest('.segmented-control').querySelector('.selection-indicator');
+            indicator.style.width = `${label.offsetWidth}px`;
+            indicator.style.transform = `translateX(${label.offsetLeft}px)`;
+        };
+
+        update('fft-radio', this.settings.fftSize);
+        update('speed-radio', this.settings.scrollSpeed);
+        update('scale-radio', this.settings.scale);
     }
     
     /**
