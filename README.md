@@ -53,7 +53,7 @@ Seeing Sound processes all audio locally in your browser. No audio data is trans
 ## Troubleshooting
 
 **"Address already in use" error**
-If you see `Port 5001 is in use by another program`, a previous instance is likely still running. To fix this:
+To fix `Port 5001 is in use by another program`:
 
 1. Find the process ID: `lsof -i :5001`
 2. Kill the process: `kill -9 <PID>` (replace `<PID>` with the number from step 1)
