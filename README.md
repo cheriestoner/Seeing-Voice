@@ -19,15 +19,6 @@ Seeing Sound provides a window into the world of sound by visualizing audio capt
   - **Scroll Speed**: Control how quickly the spectrogram moves across the screen.
 - **Responsive Design**: Enjoy a seamless experience across different devices and screen sizes.
 
-## Getting Started
-
-1. Clone this repository
-2. Create a virtual environment: `python3 -m venv .venv`
-3. Install dependencies: `./.venv/bin/pip install flask`
-4. Run the application: `./.venv/bin/python main.py`
-5. Open a web browser and navigate to `http://localhost:5000`
-6. Click "Start Listening" to begin visualizing audio from your microphone
-
 ## Usage
 
 - **Start/Stop**: Click the "Start Listening" button to begin capturing and visualizing audio. Click "Stop Listening" to pause.
@@ -43,20 +34,10 @@ Seeing Sound provides a window into the world of sound by visualizing audio capt
 
 - A modern web browser with support for the Web Audio API (Chrome, Firefox, Safari, Edge)
 - Microphone access
-- Python 3.11 or higher
-- Flask
 
 ## Privacy
 
 Seeing Sound processes all audio locally in your browser. No audio data is transmitted to any server or stored permanently.
-
-## Troubleshooting
-
-**"Address already in use" error**
-To fix `Port 5001 is in use by another program`:
-
-1. Find the process ID: `lsof -i :5001`
-2. Kill the process: `kill -9 <PID>` (replace `<PID>` with the number from step 1)
 
 ## License
 
