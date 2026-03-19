@@ -320,7 +320,27 @@ class SeeingSound {
             this.settings.maxFreq = parseInt(e.target.value);
             document.getElementById('maxFreqLabel').textContent = `${this.settings.maxFreq} Hz`;
             this.updateRangeSliderTrack();
-            this.updateFrequencyScale(); // update when slider max changes
+            this.updateFrequencyScale();
+        });
+
+        // maxFreqInput controls the ceiling (max attribute) of both sliders
+        document.getElementById('maxFreqInput').addEventListener('change', (e) => {
+            const ceiling = Math.max(1, Math.min(22050, parseInt(e.target.value) || 4000));
+            e.target.value = ceiling;
+            document.getElementById('minFreq').max = ceiling;
+            document.getElementById('maxFreq').max = ceiling;
+            if (this.settings.maxFreq > ceiling) {
+                this.settings.maxFreq = ceiling;
+                document.getElementById('maxFreq').value = ceiling;
+                document.getElementById('maxFreqLabel').textContent = `${ceiling} Hz`;
+            }
+            if (this.settings.minFreq > ceiling) {
+                this.settings.minFreq = ceiling;
+                document.getElementById('minFreq').value = ceiling;
+                document.getElementById('minFreqLabel').textContent = `${ceiling} Hz`;
+            }
+            this.updateRangeSliderTrack();
+            this.updateFrequencyScale();
         });
 
         // Scale segmented control
@@ -353,7 +373,10 @@ class SeeingSound {
                 this.settings.maxFreq = preset.maxFreq;
                 this.settings.scale = preset.scale;
 
-                // Update slider values and labels
+                // Update slider ceiling, values and labels
+                document.getElementById('maxFreqInput').value = preset.maxFreq;
+                document.getElementById('minFreq').max = preset.maxFreq;
+                document.getElementById('maxFreq').max = preset.maxFreq;
                 document.getElementById('minFreq').value = preset.minFreq;
                 document.getElementById('maxFreq').value = preset.maxFreq;
                 document.getElementById('minFreqLabel').textContent = `${preset.minFreq} Hz`;
@@ -458,12 +481,8 @@ class SeeingSound {
      * Update the range slider track
      */
     updateRangeSliderTrack() {
-        const minFreqInput = document.getElementById('minFreq');
-        const maxFreqInput = document.getElementById('maxFreq');
         const sliderRange = document.querySelector('.slider-range');
-        
-        // Calculate min and max as percentages
-        const max = parseInt(maxFreqInput.max);
+        const max = parseInt(document.getElementById('maxFreq').max);
         const minPercent = (this.settings.minFreq / max) * 100;
         const maxPercent = (this.settings.maxFreq / max) * 100;
         
@@ -974,7 +993,10 @@ class SeeingSound {
         // Update FFT size radio buttons
         document.querySelector(`input[name="fft-radio"][value="${this.settings.fftSize}"]`).checked = true;
         
-        // Update frequency range
+        // Update frequency range — ceiling from maxFreqInput, slider values from settings
+        const ceiling = parseInt(document.getElementById('maxFreqInput').value) || 4000;
+        document.getElementById('minFreq').max = ceiling;
+        document.getElementById('maxFreq').max = ceiling;
         document.getElementById('minFreq').value = this.settings.minFreq;
         document.getElementById('maxFreq').value = this.settings.maxFreq;
         document.getElementById('minFreqLabel').textContent = `${this.settings.minFreq} Hz`;

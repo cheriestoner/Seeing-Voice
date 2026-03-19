@@ -514,6 +514,31 @@ main {
     margin-bottom: var(--space-md);
 }
 
+.freq-number-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: var(--space-sm);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.freq-number-row input[type="number"] {
+    width: 70px;
+    padding: 3px 6px;
+    background: var(--input-background);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    text-align: right;
+}
+
+.freq-number-row input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
 .slider-labels {
     display: flex;
     justify-content: space-between;
