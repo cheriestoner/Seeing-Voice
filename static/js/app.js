@@ -17,8 +17,8 @@ const SCROLL_SPEEDS = {
 };
 
 const PRESETS = {
-  default: { minFreq: 0, maxFreq: 4000, scale: 'linear' },
-  music: { minFreq: 20, maxFreq: 20000, scale: 'log' },
+  default: { scale: 'linear', ceiling: 4000,  minFreq: 0,  maxFreq: 4000  },
+  music:   { scale: 'log',    ceiling: 22050, minFreq: 20, maxFreq: 20000 },
 };
 
 // Frequency slider helpers — slider internal range is always 0–SLIDER_STEPS (1000)
@@ -394,9 +394,9 @@ class SeeingSound {
                 this.settings.scale = preset.scale;
 
                 // Update ceiling input and slider positions using preset's scale
-                document.getElementById('maxFreqInput').value = preset.maxFreq;
-                document.getElementById('minFreq').value = freqToSlider(preset.minFreq, preset.maxFreq, preset.scale);
-                document.getElementById('maxFreq').value = freqToSlider(preset.maxFreq, preset.maxFreq, preset.scale);
+                document.getElementById('maxFreqInput').value = preset.ceiling;
+                document.getElementById('minFreq').value = freqToSlider(preset.minFreq, preset.ceiling, preset.scale);
+                document.getElementById('maxFreq').value = freqToSlider(preset.maxFreq, preset.ceiling, preset.scale);
                 document.getElementById('minFreqLabel').textContent = `${preset.minFreq} Hz`;
                 document.getElementById('maxFreqLabel').textContent = `${preset.maxFreq} Hz`;
 
