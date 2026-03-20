@@ -240,7 +240,7 @@ class SeeingSound {
 
                 // Fade out on the far left (oldest data)
                 float fadeAlpha = 1.0;
-                float fadeOutWidth = 0.32;
+                float fadeOutWidth = 0.52;
                 if (uvx < fadeOutWidth) {
                     fadeAlpha *= smoothstep(0.0, fadeOutWidth, uvx);
                 }
