@@ -96,7 +96,7 @@ class SeeingSound {
     }
     
     initWebGL() {
-        this.gl = this.canvas.getContext('webgl');
+        this.gl = this.canvas.getContext('webgl', { alpha: true, premultipliedAlpha: false });
         if (!this.gl) {
             console.error('WebGL not supported');
             return;
@@ -286,6 +286,7 @@ class SeeingSound {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, this.texWidth, this.texHeight, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, null);
         
         this.writeHead = 0;
+
         this.gl = gl;
     }
 

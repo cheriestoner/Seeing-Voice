@@ -64,7 +64,7 @@ html {
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: var(--background-dark);
+    background-color: transparent;
     color: var(--text-bright);
     line-height: 1.5;
     min-height: 100%;
@@ -106,7 +106,7 @@ p {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: var(--background-dark);
+    background-color: transparent;
     z-index: -2;
 }
 
@@ -151,28 +151,12 @@ header {
 .logo-container {
     display: flex;
     align-items: center;
-    justify-content: center;
-    margin-bottom: var(--space-md);
+    position: fixed;
+    top: var(--space-md);
+    left: var(--space-xl);
+    z-index: 10;
 }
 
-.logo-icon {
-    width: 2.5rem;
-    height: 2.5rem;
-    margin-right: var(--space-md);
-    color: var(--text-bright);
-    animation: pulse 3s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    0%, 100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-    50% {
-        transform: scale(1.1);
-        opacity: 0.8;
-    }
-}
 
 .logo-text {
     font-size: 2.2rem;
@@ -184,9 +168,14 @@ header {
     margin: 0;
 }
 
+.logo-img {
+    height: 2.5rem;
+    width: auto;
+}
+
 .tagline {
     font-size: 1.1rem;
-    color: var(--text-dim);
+    color: rgba(18, 18, 30, 0.6);
     margin-bottom: var(--space-lg);
     opacity: 0.9;
     font-weight: 400;
@@ -832,10 +821,9 @@ main {
 
 /* Footer */
 footer {
-    padding: var(--space-md) var(--space-lg);
-    background-color: rgba(0, 0, 0, 0.2);
-    border-top: 1px solid var(--card-border);
-    backdrop-filter: blur(10px);
+    padding: var(--space-xl) var(--space-lg);
+    background-color: rgba(18, 18, 30, 0.04);
+    border-top: 1px solid rgba(18, 18, 30, 0.1);
     margin-top: var(--space-sm);
 }
 
@@ -845,11 +833,29 @@ footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--space-lg);
 }
 
 .footer-tagline {
-    color: var(--text-dim);
-    font-size: 0.9rem;
+    color: rgba(18, 18, 30, 0.5);
+    font-size: 0.85rem;
+}
+
+.footer-affiliations {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+}
+
+.affiliation-logo {
+    height: 4rem;
+    width: auto;
+    opacity: 0.7;
+    transition: opacity var(--transition-fast);
+}
+
+.affiliation-logo:hover {
+    opacity: 1;
 }
 
 .footer-links {
@@ -858,14 +864,14 @@ footer {
 }
 
 .footer-link {
-    color: var(--text-medium);
+    color: rgba(18, 18, 30, 0.5);
     text-decoration: none;
     font-size: 0.9rem;
     transition: color var(--transition-fast);
 }
 
 .footer-link:hover {
-    color: var(--text-bright);
+    color: rgba(18, 18, 30, 0.9);
 }
 
 /* Responsive adjustments */
