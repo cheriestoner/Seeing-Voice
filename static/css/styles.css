@@ -307,6 +307,72 @@ main {
     transform: scale(1.01);
 }
 
+/* Expanded (full-page) state */
+.spectrogram-container.expanded {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    z-index: 1000;
+    transform: none;
+}
+
+.spectrogram-container.expanded:hover {
+    transform: none;
+}
+
+/* Fullscreen toggle button (top-left corner) */
+.fullscreen-btn {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 10;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease, background 0.2s ease;
+    padding: 0;
+}
+
+.fullscreen-btn:hover {
+    background: rgba(0, 0, 0, 0.6);
+    color: rgba(255, 255, 255, 1);
+}
+
+.spectrogram-container:hover .fullscreen-btn,
+.spectrogram-container.expanded .fullscreen-btn {
+    opacity: 1;
+}
+
+.fullscreen-btn svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+}
+
+.fullscreen-btn svg.icon-collapse {
+    display: none !important;
+}
+
+.spectrogram-container.expanded .fullscreen-btn svg.icon-expand {
+    display: none !important;
+}
+
+.spectrogram-container.expanded .fullscreen-btn svg.icon-collapse {
+    display: block !important;
+}
+
 #spectrogramCanvas {
     width: 100%;
     height: 100%;

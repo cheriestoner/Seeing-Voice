@@ -453,6 +453,16 @@ class SeeingSound {
             this.updateSegmentedControlIndicators();
             this.updateRangeSliderTrack();
         });
+
+        // Fullscreen toggle
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        if (fullscreenBtn) {
+            fullscreenBtn.addEventListener('click', () => {
+                const container = document.querySelector('.spectrogram-container');
+                container.classList.toggle('expanded');
+                requestAnimationFrame(() => this.setupHighDpiCanvas());
+            });
+        }
     }
     
     /**
@@ -582,7 +592,11 @@ class SeeingSound {
     setupHighDpiCanvas() {
         // Get the display pixel ratio
         const dpr = window.devicePixelRatio || 1;
-        
+
+        // Clear any inline sizes so the canvas re-fits its container (CSS 100%)
+        this.canvas.style.width = '';
+        this.canvas.style.height = '';
+
         // Get canvas size in CSS pixels
         const rect = this.canvas.getBoundingClientRect();
         
