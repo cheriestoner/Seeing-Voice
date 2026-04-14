@@ -456,10 +456,32 @@ class SeeingSound {
 
         // Fullscreen toggle
         const fullscreenBtn = document.getElementById('fullscreenBtn');
-        if (fullscreenBtn) {
-            fullscreenBtn.addEventListener('click', () => {
-                const container = document.querySelector('.spectrogram-container');
-                container.classList.toggle('expanded');
+        const spectrogramContainer = document.querySelector('.spectrogram-container');
+        if (fullscreenBtn && spectrogramContainer) {
+            const iconExpand = fullscreenBtn.querySelector('.icon-expand');
+            const iconCollapse = fullscreenBtn.querySelector('.icon-collapse');
+
+            fullscreenBtn.style.opacity = '0';
+            fullscreenBtn.style.transition = 'opacity 0.2s ease, background 0.2s ease';
+            if (iconExpand) iconExpand.style.display = 'block';
+            if (iconCollapse) iconCollapse.style.display = 'none';
+
+            // JS-driven hover visibility — CSS parent-hover chain is unreliable in Safari
+            spectrogramContainer.addEventListener('mouseenter', () => {
+                fullscreenBtn.style.opacity = '1';
+            });
+            spectrogramContainer.addEventListener('mouseleave', () => {
+                if (!spectrogramContainer.classList.contains('expanded')) {
+                    fullscreenBtn.style.opacity = '0';
+                }
+            });
+
+            fullscreenBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const expanded = spectrogramContainer.classList.toggle('expanded');
+                if (iconExpand) iconExpand.style.display = expanded ? 'none' : 'block';
+                if (iconCollapse) iconCollapse.style.display = expanded ? 'block' : 'none';
+                fullscreenBtn.style.opacity = '1';
                 requestAnimationFrame(() => this.setupHighDpiCanvas());
             });
         }

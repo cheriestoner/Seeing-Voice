@@ -334,14 +334,15 @@ main {
     border: none;
     border-radius: 8px;
     background: rgba(0, 0, 0, 0.4);
+    -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
     color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0;
-    transition: opacity 0.2s ease, background 0.2s ease;
+    /* opacity controlled by JS to avoid Safari parent-hover issues */
+    transition: background 0.2s ease;
     padding: 0;
 }
 
@@ -350,32 +351,15 @@ main {
     color: rgba(255, 255, 255, 1);
 }
 
-.spectrogram-container:hover .fullscreen-btn,
-.spectrogram-container.expanded .fullscreen-btn {
-    opacity: 1;
-}
-
 .fullscreen-btn svg {
-    display: block;
     width: 18px;
     height: 18px;
-}
-
-.fullscreen-btn svg.icon-collapse {
-    display: none !important;
-}
-
-.spectrogram-container.expanded .fullscreen-btn svg.icon-expand {
-    display: none !important;
-}
-
-.spectrogram-container.expanded .fullscreen-btn svg.icon-collapse {
-    display: block !important;
 }
 
 #spectrogramCanvas {
     width: 100%;
     height: 100%;
+    pointer-events: none;
     display: block;
 }
 
