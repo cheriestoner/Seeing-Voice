@@ -59,7 +59,8 @@ class SeeingSound {
             scrollDirection: 'left',
             sampleRate: 44100, // Will be updated with actual sample rate
             scale: 'linear', // 'linear' or 'log'
-            colormap: 'viridis' // 'experimental' or 'viridis'
+            colormap: 'viridis', // 'experimental' or 'viridis'
+            backgroundStyle: 'dark' // 'dark' | 'transparent'
         };
         
         // Buffers for audio data
@@ -128,6 +129,7 @@ class SeeingSound {
             uniform int u_scale_mode; // 0 = linear, 1 = log
             uniform int u_colormap; // 0 = experimental, 1 = viridis, 2 = greyscale
             uniform int u_flip;    // 0 = scroll left (←), 1 = scroll right (→)
+            uniform int u_transparent_bg; // 0 = dark, 1 = transparent
             varying vec2 v_uv;
 
             vec3 viridis(float t) {
@@ -206,7 +208,9 @@ class SeeingSound {
 
                 // Right portion is empty — cursor position controlled by CURSOR_X
                 if (uvx > ${CURSOR_X}) {
-                    gl_FragColor = vec4(backgroundColor, 1.0);
+                    gl_FragColor = u_transparent_bg == 1
+                        ? vec4(0.0, 0.0, 0.0, 0.0)
+                        : vec4(backgroundColor, 1.0);
                     return;
                 }
 
@@ -251,8 +255,13 @@ class SeeingSound {
                     fadeAlpha *= smoothstep(${CURSOR_X}, ${CURSOR_X} - edgeBlur, uvx);
                 }
 
-                color = mix(backgroundColor, color, fadeAlpha);
-                gl_FragColor = vec4(color, 1.0);
+                if (u_transparent_bg == 1) {
+                    float dataAlpha = amp >= u_threshold ? fadeAlpha : 0.0;
+                    gl_FragColor = vec4(color, dataAlpha);
+                } else {
+                    color = mix(backgroundColor, color, fadeAlpha);
+                    gl_FragColor = vec4(color, 1.0);
+                }
             }
         `;
 
@@ -287,6 +296,8 @@ class SeeingSound {
         
         this.writeHead = 0;
 
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         this.gl = gl;
     }
 
@@ -446,6 +457,14 @@ class SeeingSound {
                 this.updateSegmentedControlIndicators();
             });
         });
+
+        // Background style control
+        document.querySelectorAll('input[name="background-radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.settings.backgroundStyle = e.target.value;
+                this.updateSegmentedControlIndicators();
+            });
+        });
         
         // Handle window resize
         window.addEventListener('resize', () => {
@@ -512,6 +531,7 @@ class SeeingSound {
         update('speed-radio', this.settings.scrollSpeed);
         update('direction-radio', this.settings.scrollDirection);
         update('scale-radio', this.settings.scale);
+        update('background-radio', this.settings.backgroundStyle);
     }
     
     /**
@@ -1004,6 +1024,7 @@ class SeeingSound {
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_scale_mode'), scaleMode);
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_colormap'), colormapMode);
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_flip'), this.settings.scrollDirection === 'right' ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(this.program, 'u_transparent_bg'), this.settings.backgroundStyle === 'transparent' ? 1 : 0);
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
