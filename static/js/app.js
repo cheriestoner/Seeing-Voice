@@ -61,7 +61,9 @@ class SeeingSound {
             scale: 'linear', // 'linear' or 'log'
             colormap: 'viridis', // 'experimental' or 'viridis'
             backgroundStyle: 'dark', // 'dark' | 'transparent'
-            softEdge: true
+            softEdge: true,
+            trailLength: 0.33,   // 0 = short trail, 1 = long trail
+            boostIntensity: 2.5  // flash brightness at cursor edge (0 = off)
         };
         
         // Buffers for audio data
@@ -132,6 +134,8 @@ class SeeingSound {
             uniform int u_flip;    // 0 = scroll left (←), 1 = scroll right (→)
             uniform int u_transparent_bg; // 0 = dark, 1 = transparent
             uniform int u_soft_edge;      // 0 = hard, 1 = soft (only used when transparent)
+            uniform float u_trail_length;    // 0 = short, 1 = long
+            uniform float u_boost_intensity; // flash brightness at cursor edge
             varying vec2 v_uv;
 
             vec3 viridis(float t) {
@@ -240,15 +244,17 @@ class SeeingSound {
                 // Spawn flash — exponential brightness boost at the newest data edge (skip background)
                 if (amp >= u_threshold) {
                     float distFromEdge = ${CURSOR_X} - uvx;
-                    float spawnBoost = 1.0 + 2.5 * exp(-distFromEdge * 40.0);
+                    float spawnBoost = 1.0 + u_boost_intensity * exp(-distFromEdge * 40.0);
                     color *= spawnBoost;
                 }
 
                 // Fade out on the far left (oldest data)
                 float fadeAlpha = 1.0;
-                float fadeOutWidth = 0.52;
+                float fadeOutWidth = mix(${CURSOR_X} - 0.005, 0.05, u_trail_length);
                 if (uvx < fadeOutWidth) {
-                    fadeAlpha *= smoothstep(0.0, fadeOutWidth, uvx);
+                    float t = uvx / fadeOutWidth;
+                    float k = mix(10.0, 3.0, u_trail_length);
+                    fadeAlpha *= exp(k * (t - 1.0));
                 }
 
                 // Tiny blur at the right edge (newest data) — softens without visible lag
@@ -433,6 +439,18 @@ class SeeingSound {
             radio.addEventListener('change', (e) => {
                 this.settings.colormap = e.target.value;
             });
+        });
+
+        // Trail length control
+        document.getElementById('trailLength').addEventListener('input', (e) => {
+            this.settings.trailLength = parseFloat(e.target.value);
+            document.getElementById('trailLengthValue').textContent = Math.round(e.target.value * 100) + '%';
+        });
+
+        // Flash boost intensity control
+        document.getElementById('boostIntensity').addEventListener('input', (e) => {
+            this.settings.boostIntensity = parseFloat(e.target.value);
+            document.getElementById('boostIntensityValue').textContent = parseFloat(e.target.value).toFixed(1);
         });
 
         // Noise threshold control
@@ -1036,6 +1054,8 @@ class SeeingSound {
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_flip'), this.settings.scrollDirection === 'right' ? 1 : 0);
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_transparent_bg'), this.settings.backgroundStyle === 'transparent' ? 1 : 0);
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_soft_edge'), this.settings.softEdge ? 1 : 0);
+        gl.uniform1f(gl.getUniformLocation(this.program, 'u_trail_length'), this.settings.trailLength);
+        gl.uniform1f(gl.getUniformLocation(this.program, 'u_boost_intensity'), this.settings.boostIntensity);
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 

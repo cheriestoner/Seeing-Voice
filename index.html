@@ -344,6 +344,31 @@
                         <div class="card-header">
                             <div class="card-icon">
                                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 3L12 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M5 8C7 8 9 10 12 10C15 10 17 8 19 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    <path d="M5 16C7 16 9 14 12 14C15 14 17 16 19 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <h2>Flash &amp; Trail</h2>
+                        </div>
+                        <div class="card-content">
+                            <span class="control-label">Trail Length</span>
+                            <div class="slider-with-preview">
+                                <input type="range" id="trailLength" min="0" max="1" step="0.01" value="0.33" class="slider-input">
+                                <div class="threshold-value" id="trailLengthValue">33%</div>
+                            </div>
+                            <span class="control-label">Flash Intensity</span>
+                            <div class="slider-with-preview">
+                                <input type="range" id="boostIntensity" min="0" max="5" step="0.1" value="2.5" class="slider-input">
+                                <div class="threshold-value" id="boostIntensityValue">2.5</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                     <path d="M15 8L19 12L15 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
