@@ -724,6 +724,11 @@ main {
     background: linear-gradient(to right, #070711, #888888, #ffffff);
 }
 
+.reversed-greyscale-swatch {
+    background: linear-gradient(to right, transparent, #888888, #000000);
+    border: 1px solid rgba(255,255,255,0.15);
+}
+
 .colormap-label {
     font-size: 0.9rem;
     color: var(--text-medium);

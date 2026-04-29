@@ -130,7 +130,7 @@ class SeeingSound {
             uniform float u_threshold;
             uniform float u_visible_width;
             uniform int u_scale_mode; // 0 = linear, 1 = log
-            uniform int u_colormap; // 0 = experimental, 1 = viridis, 2 = greyscale
+            uniform int u_colormap; // 0 = experimental, 1 = viridis, 2 = greyscale, 3 = reversed greyscale
             uniform int u_flip;    // 0 = scroll left (←), 1 = scroll right (→)
             uniform int u_transparent_bg; // 0 = dark, 1 = transparent
             uniform int u_soft_edge;      // 0 = hard, 1 = soft (only used when transparent)
@@ -196,13 +196,22 @@ class SeeingSound {
                 return vec3(brightness);
             }
 
+            vec3 getColorReversedGreyscale(float freqRatio, float amplitude) {
+                if (amplitude < u_threshold) return vec3(0.0);
+                float brightness = pow(amplitude, 0.5);
+                brightness = max(brightness, 0.05);
+                return vec3(1.0 - brightness);
+            }
+
             vec3 getColor(float freqRatio, float amplitude) {
                 if (u_colormap == 0) {
                     return getColorExperimental(freqRatio, amplitude);
                 } else if (u_colormap == 1) {
                     return getColorViridis(freqRatio, amplitude);
-                } else {
+                } else if (u_colormap == 2) {
                     return getColorGreyscale(freqRatio, amplitude);
+                } else {
+                    return getColorReversedGreyscale(freqRatio, amplitude);
                 }
             }
 
@@ -263,8 +272,8 @@ class SeeingSound {
                     fadeAlpha *= smoothstep(${CURSOR_X}, ${CURSOR_X} - edgeBlur, uvx);
                 }
 
-                if (u_transparent_bg == 1) {
-                    float dataAlpha = u_soft_edge == 1
+                if (u_transparent_bg == 1 || u_colormap == 3) {
+                    float dataAlpha = (u_soft_edge == 1 || u_colormap == 3)
                         ? smoothstep(u_threshold, u_threshold + 0.06, amp) * fadeAlpha
                         : step(u_threshold, amp) * fadeAlpha;
                     gl_FragColor = vec4(color, dataAlpha);
@@ -1041,7 +1050,7 @@ class SeeingSound {
         const visibleWidthRatio = visibleHistory / this.texWidth;
 
         const scaleMode = this.settings.scale === 'log' ? 1 : 0;
-        const colormapMode = { experimental: 0, viridis: 1, greyscale: 2 }[this.settings.colormap] ?? 1;
+        const colormapMode = { experimental: 0, viridis: 1, greyscale: 2, reversed_greyscale: 3 }[this.settings.colormap] ?? 1;
 
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_texture'), 0);
         gl.uniform1f(gl.getUniformLocation(this.program, 'u_offset'), this.writeHead / this.texWidth);
