@@ -60,7 +60,8 @@ class SeeingSound {
             sampleRate: 44100, // Will be updated with actual sample rate
             scale: 'linear', // 'linear' or 'log'
             colormap: 'viridis', // 'experimental' or 'viridis'
-            backgroundStyle: 'dark' // 'dark' | 'transparent'
+            backgroundStyle: 'dark', // 'dark' | 'transparent'
+            softEdge: true
         };
         
         // Buffers for audio data
@@ -130,6 +131,7 @@ class SeeingSound {
             uniform int u_colormap; // 0 = experimental, 1 = viridis, 2 = greyscale
             uniform int u_flip;    // 0 = scroll left (←), 1 = scroll right (→)
             uniform int u_transparent_bg; // 0 = dark, 1 = transparent
+            uniform int u_soft_edge;      // 0 = hard, 1 = soft (only used when transparent)
             varying vec2 v_uv;
 
             vec3 viridis(float t) {
@@ -256,7 +258,9 @@ class SeeingSound {
                 }
 
                 if (u_transparent_bg == 1) {
-                    float dataAlpha = amp >= u_threshold ? fadeAlpha : 0.0;
+                    float dataAlpha = u_soft_edge == 1
+                        ? smoothstep(u_threshold, u_threshold + 0.06, amp) * fadeAlpha
+                        : step(u_threshold, amp) * fadeAlpha;
                     gl_FragColor = vec4(color, dataAlpha);
                 } else {
                     color = mix(backgroundColor, color, fadeAlpha);
@@ -462,8 +466,14 @@ class SeeingSound {
         document.querySelectorAll('input[name="background-radio"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
                 this.settings.backgroundStyle = e.target.value;
+                const isTransparent = e.target.value === 'transparent';
+                document.getElementById('softEdgeOption').style.display = isTransparent ? 'flex' : 'none';
                 this.updateSegmentedControlIndicators();
             });
+        });
+
+        document.getElementById('softEdgeCheck').addEventListener('change', (e) => {
+            this.settings.softEdge = e.target.checked;
         });
         
         // Handle window resize
@@ -1025,6 +1035,7 @@ class SeeingSound {
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_colormap'), colormapMode);
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_flip'), this.settings.scrollDirection === 'right' ? 1 : 0);
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_transparent_bg'), this.settings.backgroundStyle === 'transparent' ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(this.program, 'u_soft_edge'), this.settings.softEdge ? 1 : 0);
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 

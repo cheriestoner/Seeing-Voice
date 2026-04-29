@@ -437,6 +437,23 @@ main {
     padding: var(--space-md);
 }
 
+.soft-edge-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: var(--space-sm);
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    cursor: pointer;
+}
+
+.soft-edge-option input[type="checkbox"] {
+    accent-color: var(--primary-gradient-start);
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
 /* -----------------------------------------------
    Segmented control — base component
    Size modifiers: --sm, --md (default), --lg
