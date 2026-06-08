@@ -404,6 +404,31 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="control-card presets-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
+                                          stroke="currentColor" stroke-width="2"
+                                          stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <h2>My Presets</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="participant-id-row">
+                                <label for="participant-id-input">Participant ID</label>
+                                <input type="text" id="participant-id-input" placeholder="e.g. P01" maxlength="20" autocomplete="off">
+                            </div>
+                            <div class="preset-save-row">
+                                <input type="text" id="preset-name-input" placeholder="Preset name…" maxlength="30" autocomplete="off">
+                                <button id="save-preset-btn">Save</button>
+                            </div>
+                            <div id="custom-presets-list" class="custom-presets-list"></div>
+                            <button id="export-presets-btn">Export JSON</button>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>

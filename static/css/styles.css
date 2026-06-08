@@ -412,6 +412,170 @@ main {
     border-color: var(--card-highlight);
 }
 
+.presets-card {
+    border-color: rgba(0, 194, 178, 0.25);
+    background-color: rgba(0, 50, 45, 0.55);
+}
+
+.presets-card .card-header {
+    background-color: rgba(0, 194, 178, 0.08);
+    border-bottom-color: rgba(0, 194, 178, 0.2);
+}
+
+.presets-card .card-icon {
+    color: #00c2b2;
+    opacity: 1;
+}
+
+.presets-card:hover {
+    border-color: rgba(0, 194, 178, 0.5);
+}
+
+.participant-id-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.participant-id-row label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+}
+
+.participant-id-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 194, 178, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-light);
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.participant-id-row input:focus {
+    border-color: rgba(0, 194, 178, 0.6);
+}
+
+#export-presets-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 6px 0;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 194, 178, 0.3);
+    background: transparent;
+    color: rgba(0, 194, 178, 0.7);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+#export-presets-btn:hover {
+    background: rgba(0, 194, 178, 0.1);
+    color: #00c2b2;
+}
+
+.preset-save-row {
+    display: flex;
+    gap: 8px;
+}
+
+.preset-save-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 194, 178, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-light);
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.preset-save-row input:focus {
+    border-color: rgba(0, 194, 178, 0.6);
+}
+
+.preset-save-row button {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 194, 178, 0.4);
+    background: rgba(0, 194, 178, 0.2);
+    color: #00c2b2;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.preset-save-row button:hover {
+    background: rgba(0, 194, 178, 0.35);
+}
+
+.custom-presets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.custom-preset-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(0, 194, 178, 0.08);
+    border: 1px solid rgba(0, 194, 178, 0.2);
+    border-radius: 8px;
+}
+
+.custom-preset-item .preset-item-name {
+    flex: 1;
+    font-size: 0.85rem;
+    color: var(--text-medium);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.custom-preset-item .preset-item-pid {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    opacity: 0.7;
+}
+
+.custom-preset-item .preset-item-load {
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    border-radius: 5px;
+    border: 1px solid rgba(0, 194, 178, 0.4);
+    background: rgba(0, 194, 178, 0.15);
+    color: #00c2b2;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.custom-preset-item .preset-item-load:hover {
+    background: rgba(0, 194, 178, 0.3);
+}
+
+.custom-preset-item .preset-item-delete {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 80, 80, 0.3);
+    background: transparent;
+    color: rgba(255, 100, 100, 0.7);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.custom-preset-item .preset-item-delete:hover {
+    background: rgba(255, 80, 80, 0.15);
+}
+
 .card-header {
     display: flex;
     align-items: center;
