@@ -66,6 +66,9 @@ class SeeingSound {
             boostIntensity: 2.5  // flash brightness at cursor edge (0 = off)
         };
         
+        // Active preset tracking for fullscreen switcher
+        this._activePresetName = null;
+
         // Buffers for audio data
         this.frequencyData = null;
         this.timeData = null;
@@ -1211,10 +1214,13 @@ class SeeingSound {
 
     _renderCustomPresets() {
         const list = document.getElementById('custom-presets-list');
+        const switcher = document.getElementById('fullscreen-preset-switcher');
         if (!list) return;
         list.innerHTML = '';
+        if (switcher) switcher.innerHTML = '';
         const presets = this._getCustomPresets();
         Object.entries(presets).forEach(([name, settings]) => {
+            // Card list item
             const item = document.createElement('div');
             item.className = 'custom-preset-item';
 
@@ -1231,7 +1237,11 @@ class SeeingSound {
             const loadBtn = document.createElement('button');
             loadBtn.className = 'preset-item-load';
             loadBtn.textContent = 'Load';
-            loadBtn.addEventListener('click', () => this._applySettingsToUI(settings));
+            loadBtn.addEventListener('click', () => {
+                this._applySettingsToUI(settings);
+                this._activePresetName = name;
+                this._renderCustomPresets();
+            });
 
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'preset-item-delete';
@@ -1242,6 +1252,22 @@ class SeeingSound {
             item.appendChild(loadBtn);
             item.appendChild(deleteBtn);
             list.appendChild(item);
+
+            // Fullscreen pill
+            if (switcher) {
+                const pill = document.createElement('button');
+                pill.className = 'fullscreen-preset-pill' + (name === this._activePresetName ? ' active' : '');
+                pill.textContent = name;
+                pill.addEventListener('click', () => {
+                    this._applySettingsToUI(settings);
+                    this._activePresetName = name;
+                    switcher.querySelectorAll('.fullscreen-preset-pill').forEach(p => p.classList.remove('active'));
+                    pill.classList.add('active');
+                    // also refresh card list active states
+                    this._renderCustomPresets();
+                });
+                switcher.appendChild(pill);
+            }
         });
     }
 
