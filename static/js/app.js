@@ -140,7 +140,7 @@ class SeeingSound {
             uniform int u_scale_mode; // 0 = linear, 1 = log
             uniform int u_colormap; // 0 = experimental, 1 = viridis, 2 = greyscale, 3 = reversed greyscale
             uniform int u_flip;    // 0 = scroll left (←), 1 = scroll right (→)
-            uniform int u_transparent_bg; // 0 = dark, 1 = transparent
+            uniform int u_bg_mode; // 0 = dark, 1 = transparent, 2 = white
             uniform int u_soft_edge;      // 0 = hard, 1 = soft (only used when transparent)
             uniform float u_trail_length;    // 0 = short, 1 = long
             uniform float u_boost_intensity; // flash brightness at cursor edge
@@ -205,7 +205,7 @@ class SeeingSound {
             }
 
             vec3 getColorReversedGreyscale(float freqRatio, float amplitude) {
-                if (amplitude < u_threshold) return vec3(0.0);
+                if (amplitude < u_threshold) return vec3(1.0);
                 float brightness = pow(amplitude, 0.5);
                 brightness = max(brightness, 0.05);
                 return vec3(1.0 - brightness);
@@ -224,16 +224,15 @@ class SeeingSound {
             }
 
             void main() {
-                vec3 backgroundColor = vec3(0.027, 0.027, 0.067); // #070711
+                vec3 backgroundColor = u_bg_mode == 2 ? vec3(1.0) : vec3(0.027, 0.027, 0.067);
 
                 // Flip x-axis for right-scrolling direction
                 float uvx = u_flip == 1 ? (1.0 - v_uv.x) : v_uv.x;
 
                 // Right portion is empty — cursor position controlled by CURSOR_X
                 if (uvx > ${CURSOR_X}) {
-                    gl_FragColor = u_transparent_bg == 1
-                        ? vec4(0.0, 0.0, 0.0, 0.0)
-                        : vec4(backgroundColor, 1.0);
+                    if (u_bg_mode == 1) gl_FragColor = vec4(0.0);
+                    else gl_FragColor = vec4(backgroundColor, 1.0);
                     return;
                 }
 
@@ -258,11 +257,15 @@ class SeeingSound {
                 float amp = texture2D(u_texture, vec2(x, y)).r;
                 vec3 color = getColor(v_uv.y, amp);
 
-                // Spawn flash — exponential brightness boost at the newest data edge (skip background)
+                // Spawn flash — brighten or darken at the newest data edge depending on colormap
                 if (amp >= u_threshold) {
                     float distFromEdge = ${CURSOR_X} - uvx;
-                    float spawnBoost = 1.0 + u_boost_intensity * exp(-distFromEdge * 40.0);
-                    color *= spawnBoost;
+                    float boostFactor = u_boost_intensity * exp(-distFromEdge * 40.0);
+                    if (u_colormap == 3) {
+                        color *= 1.0 / (1.0 + boostFactor); // darken for Ink (reversed_greyscale)
+                    } else {
+                        color *= 1.0 + boostFactor;          // brighten for all others
+                    }
                 }
 
                 // Fade out on the far left (oldest data)
@@ -280,7 +283,7 @@ class SeeingSound {
                     fadeAlpha *= smoothstep(${CURSOR_X}, ${CURSOR_X} - edgeBlur, uvx);
                 }
 
-                if (u_transparent_bg == 1 || u_colormap == 3) {
+                if (u_bg_mode == 1 || (u_bg_mode == 0 && u_colormap == 3)) {
                     float dataAlpha = (u_soft_edge == 1 || u_colormap == 3)
                         ? smoothstep(u_threshold, u_threshold + 0.06, amp) * fadeAlpha
                         : step(u_threshold, amp) * fadeAlpha;
@@ -455,6 +458,14 @@ class SeeingSound {
         document.querySelectorAll('input[name="colormap-radio"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
                 this.settings.colormap = e.target.value;
+                if (e.target.value === 'reversed_greyscale') {
+                    this.settings.backgroundStyle = 'white';
+                    document.getElementById('bg-white').checked = true;
+                } else {
+                    this.settings.backgroundStyle = 'dark';
+                    document.getElementById('bg-dark').checked = true;
+                }
+                this.updateSegmentedControlIndicators();
             });
         });
 
@@ -1093,7 +1104,8 @@ class SeeingSound {
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_scale_mode'), scaleMode);
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_colormap'), colormapMode);
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_flip'), this.settings.scrollDirection === 'right' ? 1 : 0);
-        gl.uniform1i(gl.getUniformLocation(this.program, 'u_transparent_bg'), this.settings.backgroundStyle === 'transparent' ? 1 : 0);
+        const bgMode = { dark: 0, transparent: 1, white: 2 }[this.settings.backgroundStyle] ?? 0;
+        gl.uniform1i(gl.getUniformLocation(this.program, 'u_bg_mode'), bgMode);
         gl.uniform1i(gl.getUniformLocation(this.program, 'u_soft_edge'), this.settings.softEdge ? 1 : 0);
         gl.uniform1f(gl.getUniformLocation(this.program, 'u_trail_length'), this.settings.trailLength);
         gl.uniform1f(gl.getUniformLocation(this.program, 'u_boost_intensity'), this.settings.boostIntensity);
