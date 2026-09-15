@@ -409,6 +409,21 @@ main {
     z-index: 0;
 }
 
+/* 3D view: canvas becomes interactive for orbit/zoom; Hz ladder is meaningless */
+.spectrogram-container.view-3d #spectrogramCanvas {
+    pointer-events: auto;
+    cursor: grab;
+    touch-action: none;
+}
+
+.spectrogram-container.view-3d .frequency-scale {
+    display: none;
+}
+
+.spectrogram-container.view-3d:hover {
+    transform: none;
+}
+
 .frequency-scale {
     position: absolute;
     top: 0;

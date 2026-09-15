@@ -40,6 +40,146 @@ function getCeiling() {
     return parseInt(document.getElementById('maxFreqInput').value) || 4000;
 }
 
+// ── 3D spectrogram ────────────────────────────────────────────────────────
+// Mesh resolution for the 3D surface/wireframe (time columns × frequency rows)
+const GRID_COLS = 220;
+const GRID_ROWS = 140;
+
+// Shared GLSL: frequency param [0,1] → texture Y, matching the 2D shader.
+// Needs uniforms u_scale_mode, u_min_freq_ratio, u_max_freq_ratio in scope.
+const FREQ_GLSL = `
+    float freqTexY(float t) {
+        if (u_scale_mode == 1) {
+            float safeMin = max(u_min_freq_ratio, 0.001);
+            float logMin = log(safeMin);
+            float logMax = log(u_max_freq_ratio);
+            float logY = logMin + t * (logMax - logMin);
+            return exp(logY);
+        }
+        return u_min_freq_ratio + t * (u_max_freq_ratio - u_min_freq_ratio);
+    }
+`;
+
+// Shared GLSL: colormap palette. Needs uniforms u_threshold, u_colormap in scope.
+const COLORMAP_GLSL = `
+    vec3 viridis(float t) {
+        const vec3 c0 = vec3(0.2777273272234177, 0.005407344544966578, 0.3340998053353061);
+        const vec3 c1 = vec3(0.1050930431085774, 1.404613529898575, 1.384590162594685);
+        const vec3 c2 = vec3(-0.3308618287255563, 0.214847559468213, 0.09509516302823659);
+        const vec3 c3 = vec3(-4.634230498983486, -5.799100973351585, -19.33244095627987);
+        const vec3 c4 = vec3(6.228269936347081, 14.17993336680509, 56.69055260068105);
+        const vec3 c5 = vec3(4.776384997670288, -13.74514537774601, -65.35303263337234);
+        const vec3 c6 = vec3(-5.435455855934631, 4.645852612178535, 26.3124352495832);
+        return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
+    }
+
+    vec3 getColorExperimental(float freqRatio, float amplitude) {
+        vec3 c0 = vec3(0.39, 0.0, 0.0);
+        vec3 c1 = vec3(1.0, 0.0, 0.0);
+        vec3 c2 = vec3(1.0, 0.39, 0.0);
+        vec3 c3 = vec3(1.0, 0.78, 0.0);
+        vec3 c4 = vec3(1.0, 1.0, 0.2);
+
+        vec3 color;
+        if (freqRatio < 0.25) {
+            color = mix(c0, c1, freqRatio * 4.0);
+        } else if (freqRatio < 0.5) {
+            color = mix(c1, c2, (freqRatio - 0.25) * 4.0);
+        } else if (freqRatio < 0.75) {
+            color = mix(c2, c3, (freqRatio - 0.5) * 4.0);
+        } else {
+            color = mix(c3, c4, (freqRatio - 0.75) * 4.0);
+        }
+
+        if (amplitude < u_threshold) return vec3(0.027, 0.027, 0.067);
+
+        float brightness = pow(amplitude, 0.5);
+        brightness = max(brightness, 0.05);
+        return color * brightness;
+    }
+
+    vec3 getColorViridis(float freqRatio, float amplitude) {
+        if (amplitude < u_threshold) return vec3(0.027, 0.027, 0.067);
+        float brightness = pow(amplitude, 0.5);
+        brightness = max(brightness, 0.05);
+        return viridis(amplitude) * brightness;
+    }
+
+    vec3 getColorGreyscale(float freqRatio, float amplitude) {
+        if (amplitude < u_threshold) return vec3(0.027, 0.027, 0.067);
+        float brightness = pow(amplitude, 0.5);
+        brightness = max(brightness, 0.05);
+        return vec3(brightness);
+    }
+
+    vec3 getColorReversedGreyscale(float freqRatio, float amplitude) {
+        if (amplitude < u_threshold) return vec3(1.0);
+        float brightness = pow(amplitude, 0.5);
+        brightness = max(brightness, 0.05);
+        return vec3(1.0 - brightness);
+    }
+
+    vec3 getColor(float freqRatio, float amplitude) {
+        if (u_colormap == 0) {
+            return getColorExperimental(freqRatio, amplitude);
+        } else if (u_colormap == 1) {
+            return getColorViridis(freqRatio, amplitude);
+        } else if (u_colormap == 2) {
+            return getColorGreyscale(freqRatio, amplitude);
+        } else {
+            return getColorReversedGreyscale(freqRatio, amplitude);
+        }
+    }
+`;
+
+// Minimal column-major 4×4 matrix helpers (no dependency). Each writes into `out`.
+const Mat4 = {
+    perspective(out, fovy, aspect, near, far) {
+        const f = 1.0 / Math.tan(fovy / 2);
+        const nf = 1 / (near - far);
+        out[0] = f / aspect; out[1] = 0; out[2] = 0;  out[3] = 0;
+        out[4] = 0; out[5] = f; out[6] = 0; out[7] = 0;
+        out[8] = 0; out[9] = 0; out[10] = (far + near) * nf; out[11] = -1;
+        out[12] = 0; out[13] = 0; out[14] = 2 * far * near * nf; out[15] = 0;
+        return out;
+    },
+    lookAt(out, eye, center, up) {
+        let x0, x1, x2, y0, y1, y2, z0, z1, z2, len;
+        z0 = eye[0] - center[0]; z1 = eye[1] - center[1]; z2 = eye[2] - center[2];
+        len = 1 / Math.hypot(z0, z1, z2); z0 *= len; z1 *= len; z2 *= len;
+        x0 = up[1] * z2 - up[2] * z1;
+        x1 = up[2] * z0 - up[0] * z2;
+        x2 = up[0] * z1 - up[1] * z0;
+        len = Math.hypot(x0, x1, x2);
+        if (!len) { x0 = 0; x1 = 0; x2 = 0; } else { len = 1 / len; x0 *= len; x1 *= len; x2 *= len; }
+        y0 = z1 * x2 - z2 * x1;
+        y1 = z2 * x0 - z0 * x2;
+        y2 = z0 * x1 - z1 * x0;
+        out[0] = x0; out[1] = y0; out[2] = z0; out[3] = 0;
+        out[4] = x1; out[5] = y1; out[6] = z1; out[7] = 0;
+        out[8] = x2; out[9] = y2; out[10] = z2; out[11] = 0;
+        out[12] = -(x0 * eye[0] + x1 * eye[1] + x2 * eye[2]);
+        out[13] = -(y0 * eye[0] + y1 * eye[1] + y2 * eye[2]);
+        out[14] = -(z0 * eye[0] + z1 * eye[1] + z2 * eye[2]);
+        out[15] = 1;
+        return out;
+    },
+    multiply(out, a, b) {
+        const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
+              a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
+              a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
+              a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+        for (let i = 0; i < 4; i++) {
+            const b0 = b[i * 4], b1 = b[i * 4 + 1], b2 = b[i * 4 + 2], b3 = b[i * 4 + 3];
+            out[i * 4]     = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+            out[i * 4 + 1] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+            out[i * 4 + 2] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+            out[i * 4 + 3] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+        }
+        return out;
+    }
+};
+
 // Main application class
 class SeeingSound {
     constructor() {
@@ -63,11 +203,22 @@ class SeeingSound {
             backgroundStyle: 'dark', // 'dark' | 'transparent'
             softEdge: true,
             trailLength: 0.33,   // 0 = short trail, 1 = long trail
-            boostIntensity: 2.5  // flash brightness at cursor edge (0 = off)
+            boostIntensity: 2.5, // flash brightness at cursor edge (0 = off)
+            viewMode: '2d',      // '2d' | 'surface' | 'wireframe'
+            heightScale3d: 0.6   // vertical exaggeration for the 3D surface
         };
-        
+
         // Active preset tracking for fullscreen switcher
         this._activePresetName = null;
+
+        // 3D orbit camera + reusable matrices
+        this._cam = { az: -0.6, el: 0.42, dist: 2.3 }; // azimuth, elevation (rad), distance
+        this._proj = new Float32Array(16);
+        this._view = new Float32Array(16);
+        this._mvp = new Float32Array(16);
+        this._webgl3dOK = true;   // set false if vertex texture fetch is unsupported
+        this._dragging = false;
+        this._lastPointer = { x: 0, y: 0 };
 
         // Buffers for audio data
         this.frequencyData = null;
@@ -146,82 +297,8 @@ class SeeingSound {
             uniform float u_boost_intensity; // flash brightness at cursor edge
             varying vec2 v_uv;
 
-            vec3 viridis(float t) {
-                const vec3 c0 = vec3(0.2777273272234177, 0.005407344544966578, 0.3340998053353061);
-                const vec3 c1 = vec3(0.1050930431085774, 1.404613529898575, 1.384590162594685);
-                const vec3 c2 = vec3(-0.3308618287255563, 0.214847559468213, 0.09509516302823659);
-                const vec3 c3 = vec3(-4.634230498983486, -5.799100973351585, -19.33244095627987);
-                const vec3 c4 = vec3(6.228269936347081, 14.17993336680509, 56.69055260068105);
-                const vec3 c5 = vec3(4.776384997670288, -13.74514537774601, -65.35303263337234);
-                const vec3 c6 = vec3(-5.435455855934631, 4.645852612178535, 26.3124352495832);
-
-                return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
-            }
-
-            vec3 getColorExperimental(float freqRatio, float amplitude) {
-                // Replicate JS gradient: Deep Red -> Bright Red -> Orange -> Yellow
-                vec3 c0 = vec3(0.39, 0.0, 0.0); // 100,0,0
-                vec3 c1 = vec3(1.0, 0.0, 0.0);  // 255,0,0
-                vec3 c2 = vec3(1.0, 0.39, 0.0); // 255,100,0
-                vec3 c3 = vec3(1.0, 0.78, 0.0); // 255,200,0
-                vec3 c4 = vec3(1.0, 1.0, 0.2);  // 255,255,50
-
-                vec3 color;
-                if (freqRatio < 0.25) {
-                    color = mix(c0, c1, freqRatio * 4.0);
-                } else if (freqRatio < 0.5) {
-                    color = mix(c1, c2, (freqRatio - 0.25) * 4.0);
-                } else if (freqRatio < 0.75) {
-                    color = mix(c2, c3, (freqRatio - 0.5) * 4.0);
-                } else {
-                    color = mix(c3, c4, (freqRatio - 0.75) * 4.0);
-                }
-
-                // Amplitude brightness & Threshold
-                if (amplitude < u_threshold) return vec3(0.027, 0.027, 0.067); // #070711
-
-                float brightness = pow(amplitude, 0.5); // Gamma
-                brightness = max(brightness, 0.05);
-
-                return color * brightness;
-            }
-
-            vec3 getColorViridis(float freqRatio, float amplitude) {
-                // Threshold check - same background color
-                if (amplitude < u_threshold) return vec3(0.027, 0.027, 0.067);
-
-                // Direct amplitude to color mapping
-                // return viridis(amplitude);
-                float brightness = pow(amplitude, 0.5);
-                brightness = max(brightness, 0.05);
-                return viridis(amplitude) * brightness;
-            }
-
-            vec3 getColorGreyscale(float freqRatio, float amplitude) {
-                if (amplitude < u_threshold) return vec3(0.027, 0.027, 0.067);
-                float brightness = pow(amplitude, 0.5);
-                brightness = max(brightness, 0.05);
-                return vec3(brightness);
-            }
-
-            vec3 getColorReversedGreyscale(float freqRatio, float amplitude) {
-                if (amplitude < u_threshold) return vec3(1.0);
-                float brightness = pow(amplitude, 0.5);
-                brightness = max(brightness, 0.05);
-                return vec3(1.0 - brightness);
-            }
-
-            vec3 getColor(float freqRatio, float amplitude) {
-                if (u_colormap == 0) {
-                    return getColorExperimental(freqRatio, amplitude);
-                } else if (u_colormap == 1) {
-                    return getColorViridis(freqRatio, amplitude);
-                } else if (u_colormap == 2) {
-                    return getColorGreyscale(freqRatio, amplitude);
-                } else {
-                    return getColorReversedGreyscale(freqRatio, amplitude);
-                }
-            }
+            ${FREQ_GLSL}
+            ${COLORMAP_GLSL}
 
             void main() {
                 vec3 backgroundColor = u_bg_mode == 2 ? vec3(1.0) : vec3(0.027, 0.027, 0.067);
@@ -240,19 +317,8 @@ class SeeingSound {
                 float x = u_offset + (uvx / ${CURSOR_X} - 1.0) * u_visible_width;
                 x = fract(x);
 
-                // Y mapping (Frequency Zoom)
-                float y;
-                if (u_scale_mode == 1) {
-                    // Logarithmic scale
-                    float safeMin = max(u_min_freq_ratio, 0.001);
-                    float logMin = log(safeMin);
-                    float logMax = log(u_max_freq_ratio);
-                    float logY = logMin + v_uv.y * (logMax - logMin);
-                    y = exp(logY);
-                } else {
-                    // Linear scale
-                    y = u_min_freq_ratio + v_uv.y * (u_max_freq_ratio - u_min_freq_ratio);
-                }
+                // Y mapping (Frequency Zoom) — shared helper
+                float y = freqTexY(v_uv.y);
 
                 float amp = texture2D(u_texture, vec2(x, y)).r;
                 vec3 color = getColor(v_uv.y, amp);
@@ -303,12 +369,13 @@ class SeeingSound {
         gl.attachShader(this.program, fs);
         gl.linkProgram(this.program);
 
-        // Buffers
+        // Buffers — full-screen quad for the 2D view
         const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
         const buffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-        
+        this.quadBuffer = buffer;
+
         const posLoc = gl.getAttribLocation(this.program, 'a_position');
         gl.enableVertexAttribArray(posLoc);
         gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
@@ -329,6 +396,160 @@ class SeeingSound {
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         this.gl = gl;
+
+        // 3D program + geometry (shares this.texture as the height source)
+        this.initWebGL3D(gl);
+    }
+
+    /**
+     * Build the second WebGL program that renders the history texture as a
+     * displaced vertex grid (3D surface / wireframe). Reuses this.texture and
+     * the shared colormap / frequency GLSL.
+     */
+    initWebGL3D(gl) {
+        if (gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS) < 1) {
+            this._webgl3dOK = false;
+            console.warn('Vertex texture fetch unsupported — 3D spectrogram disabled');
+            return;
+        }
+
+        const vsSource = `
+            precision mediump float;
+            precision mediump int;
+            attribute vec2 a_grid;                // parametric coords in [0,1]
+            uniform sampler2D u_texture;
+            uniform float u_offset;
+            uniform float u_min_freq_ratio;
+            uniform float u_max_freq_ratio;
+            uniform float u_threshold;
+            uniform float u_visible_width;
+            uniform int u_scale_mode;
+            uniform mat4 u_mvp;
+            uniform float u_height_scale;
+            uniform int u_lighting;
+            varying float v_amp;
+            varying float v_freq;
+            varying vec3 v_normal;
+
+            ${FREQ_GLSL}
+
+            float sampleAmp(vec2 g) {
+                float x = fract(u_offset + (g.x - 1.0) * u_visible_width);
+                float y = freqTexY(clamp(g.y, 0.0, 1.0));
+                return texture2D(u_texture, vec2(x, y)).r;
+            }
+
+            float heightAt(vec2 g) {
+                float a = sampleAmp(g);
+                if (a < u_threshold) return 0.0;
+                return pow(a, 0.5) * u_height_scale;
+            }
+
+            void main() {
+                float h = heightAt(a_grid);
+                v_amp = sampleAmp(a_grid);
+                v_freq = a_grid.y;
+
+                // Plane: x = time [-1,1], z = frequency [-1,1], y = amplitude
+                vec3 pos = vec3(a_grid.x * 2.0 - 1.0, h, a_grid.y * 2.0 - 1.0);
+
+                if (u_lighting == 1) {
+                    float du = 1.0 / float(${GRID_COLS});
+                    float dv = 1.0 / float(${GRID_ROWS});
+                    float hL = heightAt(a_grid + vec2(-du, 0.0));
+                    float hR = heightAt(a_grid + vec2( du, 0.0));
+                    float hD = heightAt(a_grid + vec2(0.0, -dv));
+                    float hU = heightAt(a_grid + vec2(0.0,  dv));
+                    float sx = (hR - hL) / (4.0 * du);   // world dx per grid step = 2*du
+                    float sz = (hU - hD) / (4.0 * dv);
+                    v_normal = normalize(vec3(-sx, 1.0, -sz));
+                } else {
+                    v_normal = vec3(0.0, 1.0, 0.0);
+                }
+
+                gl_Position = u_mvp * vec4(pos, 1.0);
+            }
+        `;
+
+        const fsSource = `
+            precision mediump float;
+            precision mediump int;
+            uniform float u_threshold;
+            uniform int u_colormap;
+            uniform int u_lighting;
+            varying float v_amp;
+            varying float v_freq;
+            varying vec3 v_normal;
+
+            ${COLORMAP_GLSL}
+
+            void main() {
+                vec3 color = getColor(v_freq, v_amp);
+                if (u_lighting == 1) {
+                    vec3 L = normalize(vec3(0.4, 0.85, 0.45));
+                    float diff = max(dot(normalize(v_normal), L), 0.0);
+                    color *= (0.4 + 0.6 * diff);
+                }
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        const vs = this.createShader(gl, gl.VERTEX_SHADER, vsSource);
+        const fs = this.createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+        if (!vs || !fs) { this._webgl3dOK = false; return; }
+        const prog = gl.createProgram();
+        gl.attachShader(prog, vs);
+        gl.attachShader(prog, fs);
+        gl.linkProgram(prog);
+        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+            console.error(gl.getProgramInfoLog(prog));
+            this._webgl3dOK = false;
+            return;
+        }
+        this.program3d = prog;
+
+        // Grid vertices (parametric)
+        const verts = [];
+        for (let j = 0; j < GRID_ROWS; j++) {
+            for (let i = 0; i < GRID_COLS; i++) {
+                verts.push(i / (GRID_COLS - 1), j / (GRID_ROWS - 1));
+            }
+        }
+        this.gridBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.gridBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+
+        const at = (i, j) => j * GRID_COLS + i;
+
+        // Triangle indices (surface)
+        const tris = [];
+        for (let j = 0; j < GRID_ROWS - 1; j++) {
+            for (let i = 0; i < GRID_COLS - 1; i++) {
+                tris.push(at(i, j), at(i + 1, j), at(i, j + 1));
+                tris.push(at(i + 1, j), at(i + 1, j + 1), at(i, j + 1));
+            }
+        }
+        this.triIndexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.triIndexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(tris), gl.STATIC_DRAW);
+        this.triIndexCount = tris.length;
+
+        // Line indices (wireframe): row edges + column edges
+        const lines = [];
+        for (let j = 0; j < GRID_ROWS; j++) {
+            for (let i = 0; i < GRID_COLS - 1; i++) lines.push(at(i, j), at(i + 1, j));
+        }
+        for (let i = 0; i < GRID_COLS; i++) {
+            for (let j = 0; j < GRID_ROWS - 1; j++) lines.push(at(i, j), at(i, j + 1));
+        }
+        this.lineIndexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.lineIndexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(lines), gl.STATIC_DRAW);
+        this.lineIndexCount = lines.length;
+
+        // Restore array-buffer binding expected by the 2D setup
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
     }
 
     createShader(gl, type, source) {
@@ -522,6 +743,64 @@ class SeeingSound {
             this.settings.softEdge = e.target.checked;
         });
 
+        // View mode: 2D / 3D surface / 3D wireframe
+        const spectrogramContainerEl = document.querySelector('.spectrogram-container');
+        const heightRow = document.getElementById('heightScale3dRow');
+        document.querySelectorAll('input[name="view-radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const mode = e.target.value;
+                if (mode !== '2d' && !this._webgl3dOK) {
+                    this.showNotification('3D view is not supported on this device.', 'error');
+                    document.querySelector('input[name="view-radio"][value="2d"]').checked = true;
+                    this.updateSegmentedControlIndicators();
+                    return;
+                }
+                this.settings.viewMode = mode;
+                const is3d = mode !== '2d';
+                spectrogramContainerEl.classList.toggle('view-3d', is3d);
+                if (heightRow) heightRow.style.display = is3d ? '' : 'none';
+                this.updateSegmentedControlIndicators();
+            });
+        });
+
+        // 3D vertical exaggeration
+        document.getElementById('heightScale3d').addEventListener('input', (e) => {
+            this.settings.heightScale3d = parseFloat(e.target.value);
+            document.getElementById('heightScale3dValue').textContent = this.settings.heightScale3d.toFixed(2);
+        });
+
+        // 3D orbit + zoom (canvas only receives pointer events while .view-3d)
+        const canvas = this.canvas;
+        canvas.addEventListener('pointerdown', (e) => {
+            if (this.settings.viewMode === '2d') return;
+            this._dragging = true;
+            this._lastPointer = { x: e.clientX, y: e.clientY };
+            canvas.setPointerCapture(e.pointerId);
+            canvas.style.cursor = 'grabbing';
+        });
+        canvas.addEventListener('pointermove', (e) => {
+            if (!this._dragging) return;
+            const dx = e.clientX - this._lastPointer.x;
+            const dy = e.clientY - this._lastPointer.y;
+            this._lastPointer = { x: e.clientX, y: e.clientY };
+            this._cam.az -= dx * 0.01;
+            this._cam.el = Math.max(0.05, Math.min(1.5, this._cam.el + dy * 0.01));
+        });
+        const endDrag = (e) => {
+            this._dragging = false;
+            if (e.pointerId != null && canvas.hasPointerCapture(e.pointerId)) {
+                canvas.releasePointerCapture(e.pointerId);
+            }
+            canvas.style.cursor = 'grab';
+        };
+        canvas.addEventListener('pointerup', endDrag);
+        canvas.addEventListener('pointercancel', endDrag);
+        canvas.addEventListener('wheel', (e) => {
+            if (this.settings.viewMode === '2d') return;
+            e.preventDefault();
+            this._cam.dist = Math.max(1.5, Math.min(8, this._cam.dist * (1 + e.deltaY * 0.001)));
+        }, { passive: false });
+
         // Custom preset save
         const presetNameInput = document.getElementById('preset-name-input');
         const savePresetBtn = document.getElementById('save-preset-btn');
@@ -612,6 +891,7 @@ class SeeingSound {
         update('direction-radio', this.settings.scrollDirection);
         update('scale-radio', this.settings.scale);
         update('background-radio', this.settings.backgroundStyle);
+        update('view-radio', this.settings.viewMode);
     }
     
     /**
@@ -1058,62 +1338,121 @@ class SeeingSound {
         const gl = this.gl;
         if (!gl || !this.program) return;
 
-        // 1. Update Texture with new frequency data
-        // We upload the full frequency data column to the current write head position
-        // Note: frequencyData is Uint8Array
+        // 1. Upload the new frequency column at the current write head
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
-        
-        // We only upload the valid bins (fftSize / 2)
         const bins = this.analyser.frequencyBinCount;
-        
-        // Upload column. xoffset = writeHead, yoffset = 0, width = 1, height = bins
-        // We need to ensure frequencyData is treated as a column. 
-        // texSubImage2D expects data to match dimensions. 
-        // For 1xHeight, the Uint8Array is fine.
         gl.texSubImage2D(gl.TEXTURE_2D, 0, this.writeHead, 0, 1, bins, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.frequencyData);
 
-        // 2. Draw Quad
-        gl.useProgram(this.program);
-        
-        // Calculate Uniforms
+        // 2. Shared uniform inputs (used by both the 2D and 3D draw paths)
         const nyquist = this.settings.sampleRate / 2;
-        // Scale ratios by the portion of the texture actually used (bins / texHeight)
-        const heightScale = bins / this.texHeight;
-        const minRatio = (this.settings.minFreq / nyquist) * heightScale;
-        const maxRatio = (this.settings.maxFreq / nyquist) * heightScale;
-        const threshold = Math.max(this.settings.noiseThreshold / 100.0, MIN_THRESHOLD);
-        
+        const heightScale = bins / this.texHeight;   // portion of the texture in use
         const scrollSpeed = SCROLL_SPEEDS[this.settings.scrollSpeed];
         const canvasWidth = this.canvas.width / window.devicePixelRatio;
-        
-        // Calculate how much of the texture width is visible on screen
-        // If scrollSpeed is 1, we show canvasWidth amount of history.
-        // If scrollSpeed is 2, we show canvasWidth/2 amount of history (zoomed in time).
-        const visibleHistory = canvasWidth / scrollSpeed;
-        const visibleWidthRatio = visibleHistory / this.texWidth;
+        const shared = {
+            offset: this.writeHead / this.texWidth,
+            minRatio: (this.settings.minFreq / nyquist) * heightScale,
+            maxRatio: (this.settings.maxFreq / nyquist) * heightScale,
+            threshold: Math.max(this.settings.noiseThreshold / 100.0, MIN_THRESHOLD),
+            visibleWidthRatio: (canvasWidth / scrollSpeed) / this.texWidth,
+            scaleMode: this.settings.scale === 'log' ? 1 : 0,
+            colormapMode: { experimental: 0, viridis: 1, greyscale: 2, reversed_greyscale: 3 }[this.settings.colormap] ?? 1,
+        };
 
-        const scaleMode = this.settings.scale === 'log' ? 1 : 0;
-        const colormapMode = { experimental: 0, viridis: 1, greyscale: 2, reversed_greyscale: 3 }[this.settings.colormap] ?? 1;
+        // 3. Draw with the selected view mode
+        if (this.settings.viewMode !== '2d' && this.program3d) {
+            this.renderWebGL3D(shared);
+        } else {
+            this.renderWebGL2D(shared);
+        }
 
-        gl.uniform1i(gl.getUniformLocation(this.program, 'u_texture'), 0);
-        gl.uniform1f(gl.getUniformLocation(this.program, 'u_offset'), this.writeHead / this.texWidth);
-        gl.uniform1f(gl.getUniformLocation(this.program, 'u_min_freq_ratio'), minRatio);
-        gl.uniform1f(gl.getUniformLocation(this.program, 'u_max_freq_ratio'), maxRatio);
-        gl.uniform1f(gl.getUniformLocation(this.program, 'u_threshold'), threshold);
-        gl.uniform1f(gl.getUniformLocation(this.program, 'u_visible_width'), visibleWidthRatio);
-        gl.uniform1i(gl.getUniformLocation(this.program, 'u_scale_mode'), scaleMode);
-        gl.uniform1i(gl.getUniformLocation(this.program, 'u_colormap'), colormapMode);
-        gl.uniform1i(gl.getUniformLocation(this.program, 'u_flip'), this.settings.scrollDirection === 'right' ? 1 : 0);
+        // 4. Advance write head
+        this.writeHead = (this.writeHead + 1) % this.texWidth;
+    }
+
+    /** 2D scrolling spectrogram — full-screen quad + fragment shader */
+    renderWebGL2D(s) {
+        const gl = this.gl;
+        const p = this.program;
+
+        gl.disable(gl.DEPTH_TEST);
+        gl.useProgram(p);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+        const posLoc = gl.getAttribLocation(p, 'a_position');
+        gl.enableVertexAttribArray(posLoc);
+        gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+        gl.uniform1i(gl.getUniformLocation(p, 'u_texture'), 0);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_offset'), s.offset);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_min_freq_ratio'), s.minRatio);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_max_freq_ratio'), s.maxRatio);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_threshold'), s.threshold);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_visible_width'), s.visibleWidthRatio);
+        gl.uniform1i(gl.getUniformLocation(p, 'u_scale_mode'), s.scaleMode);
+        gl.uniform1i(gl.getUniformLocation(p, 'u_colormap'), s.colormapMode);
+        gl.uniform1i(gl.getUniformLocation(p, 'u_flip'), this.settings.scrollDirection === 'right' ? 1 : 0);
         const bgMode = { dark: 0, transparent: 1, white: 2 }[this.settings.backgroundStyle] ?? 0;
-        gl.uniform1i(gl.getUniformLocation(this.program, 'u_bg_mode'), bgMode);
-        gl.uniform1i(gl.getUniformLocation(this.program, 'u_soft_edge'), this.settings.softEdge ? 1 : 0);
-        gl.uniform1f(gl.getUniformLocation(this.program, 'u_trail_length'), this.settings.trailLength);
-        gl.uniform1f(gl.getUniformLocation(this.program, 'u_boost_intensity'), this.settings.boostIntensity);
+        gl.uniform1i(gl.getUniformLocation(p, 'u_bg_mode'), bgMode);
+        gl.uniform1i(gl.getUniformLocation(p, 'u_soft_edge'), this.settings.softEdge ? 1 : 0);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_trail_length'), this.settings.trailLength);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_boost_intensity'), this.settings.boostIntensity);
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
 
-        // 3. Advance Write Head
-        this.writeHead = (this.writeHead + 1) % this.texWidth;
+    /** 3D view — history texture as a displaced vertex grid (surface or wireframe) */
+    renderWebGL3D(s) {
+        const gl = this.gl;
+        const p = this.program3d;
+
+        gl.enable(gl.DEPTH_TEST);
+
+        // Clear with the chosen background
+        const bg = this.settings.backgroundStyle;
+        if (bg === 'white') gl.clearColor(1, 1, 1, 1);
+        else if (bg === 'transparent') gl.clearColor(0, 0, 0, 0);
+        else gl.clearColor(0.027, 0.027, 0.067, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        // Orbit camera → MVP (aspect read every frame, so resize/fullscreen just works)
+        const aspect = (this.canvas.width / this.canvas.height) || 1;
+        const { az, el, dist } = this._cam;
+        const target = [0, 0.2, 0];
+        const eye = [
+            target[0] + dist * Math.cos(el) * Math.sin(az),
+            target[1] + dist * Math.sin(el),
+            target[2] + dist * Math.cos(el) * Math.cos(az),
+        ];
+        Mat4.perspective(this._proj, 50 * Math.PI / 180, aspect, 0.1, 100);
+        Mat4.lookAt(this._view, eye, target, [0, 1, 0]);
+        Mat4.multiply(this._mvp, this._proj, this._view);
+
+        gl.useProgram(p);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.gridBuffer);
+        const gridLoc = gl.getAttribLocation(p, 'a_grid');
+        gl.enableVertexAttribArray(gridLoc);
+        gl.vertexAttribPointer(gridLoc, 2, gl.FLOAT, false, 0, 0);
+
+        gl.uniform1i(gl.getUniformLocation(p, 'u_texture'), 0);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_offset'), s.offset);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_min_freq_ratio'), s.minRatio);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_max_freq_ratio'), s.maxRatio);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_threshold'), s.threshold);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_visible_width'), s.visibleWidthRatio);
+        gl.uniform1i(gl.getUniformLocation(p, 'u_scale_mode'), s.scaleMode);
+        gl.uniform1i(gl.getUniformLocation(p, 'u_colormap'), s.colormapMode);
+        gl.uniformMatrix4fv(gl.getUniformLocation(p, 'u_mvp'), false, this._mvp);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_height_scale'), this.settings.heightScale3d);
+        gl.uniform1i(gl.getUniformLocation(p, 'u_lighting'), this.settings.viewMode === 'surface' ? 1 : 0);
+
+        if (this.settings.viewMode === 'wireframe') {
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.lineIndexBuffer);
+            gl.drawElements(gl.LINES, this.lineIndexCount, gl.UNSIGNED_SHORT, 0);
+        } else {
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.triIndexBuffer);
+            gl.drawElements(gl.TRIANGLES, this.triIndexCount, gl.UNSIGNED_SHORT, 0);
+        }
     }
     
     /**
@@ -1173,6 +1512,11 @@ class SeeingSound {
     _applySettingsToUI(s) {
         Object.assign(this.settings, s);
 
+        // Defaults for presets saved before these fields existed
+        if (!this.settings.viewMode) this.settings.viewMode = '2d';
+        if (this.settings.heightScale3d == null) this.settings.heightScale3d = 0.6;
+        if (this.settings.viewMode !== '2d' && !this._webgl3dOK) this.settings.viewMode = '2d';
+
         const setRadio = (name, value) => {
             const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
             if (el) el.checked = true;
@@ -1184,6 +1528,14 @@ class SeeingSound {
         setRadio('speed-radio', s.scrollSpeed);
         setRadio('direction-radio', s.scrollDirection);
         setRadio('background-radio', s.backgroundStyle);
+        setRadio('view-radio', this.settings.viewMode);
+
+        const is3d = this.settings.viewMode !== '2d';
+        document.querySelector('.spectrogram-container').classList.toggle('view-3d', is3d);
+        const heightRow = document.getElementById('heightScale3dRow');
+        if (heightRow) heightRow.style.display = is3d ? '' : 'none';
+        document.getElementById('heightScale3d').value = this.settings.heightScale3d;
+        document.getElementById('heightScale3dValue').textContent = this.settings.heightScale3d.toFixed(2);
 
         const softEdgeCheck = document.getElementById('softEdgeCheck');
         const softEdgeOption = document.getElementById('softEdgeOption');

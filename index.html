@@ -200,6 +200,37 @@
                         <div class="card-header">
                             <div class="card-icon">
                                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                    <path d="M12 22V12M12 12L21 7M12 12L3 7" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <h2>View</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="segmented-control segmented-control--md" style="--sc-count: 3">
+                                <input type="radio" name="view-radio" id="view-2d" value="2d" checked>
+                                <label for="view-2d">2D</label>
+                                <input type="radio" name="view-radio" id="view-surface" value="surface">
+                                <label for="view-surface">Surface</label>
+                                <input type="radio" name="view-radio" id="view-wireframe" value="wireframe">
+                                <label for="view-wireframe">Wireframe</label>
+                                <span class="selection-indicator"></span>
+                            </div>
+                            <div id="heightScale3dRow" style="display:none">
+                                <span class="control-label">Height</span>
+                                <div class="slider-with-preview">
+                                    <input type="range" id="heightScale3d" min="0.1" max="1.5" step="0.05" value="0.6" class="slider-input">
+                                    <div class="threshold-value" id="heightScale3dValue">0.60</div>
+                                </div>
+                            </div>
+                            <div class="tooltip">Surface and Wireframe show the spectrogram as a 3D terrain — drag to orbit, scroll to zoom</div>
+                        </div>
+                    </div>
+
+                    <div class="control-card">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
                                     <circle cx="6" cy="18" r="2" fill="currentColor"/>
                                     <circle cx="18" cy="18" r="2" fill="currentColor"/>
