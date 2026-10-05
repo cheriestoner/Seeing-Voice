@@ -31,6 +31,8 @@ class PresetsMethods {
         // Defaults for presets saved before these fields existed
         if (!this.settings.viewMode) this.settings.viewMode = '2d';
         if (this.settings.heightScale3d == null) this.settings.heightScale3d = 0.6;
+        if (s.minDb == null) this.settings.minDb = -100;
+        if (s.maxDb == null) this.settings.maxDb = -30;
         if (this.settings.viewMode !== '2d' && !this._webgl3dOK) this.settings.viewMode = '2d';
 
         const setRadio = (name, value) => {
@@ -71,6 +73,8 @@ class PresetsMethods {
 
         document.getElementById('trailLength').value = s.trailLength;
         document.getElementById('trailLengthValue').textContent = Math.round(s.trailLength * 100) + '%';
+
+        if (this.syncDbUI) this.syncDbUI();
 
         document.getElementById('boostIntensity').value = s.boostIntensity;
         document.getElementById('boostIntensityValue').textContent = parseFloat(s.boostIntensity).toFixed(1);

@@ -140,6 +140,30 @@ class ControlsMethods {
             document.getElementById('boostIntensityValue').textContent = parseFloat(e.target.value).toFixed(1);
         });
 
+        // Analyser level range (dB). Keep at least 10 dB between floor and ceiling.
+        const fmtDb = (v) => `${v < 0 ? '−' : ''}${Math.abs(v)} dB`;
+        const minDbEl = document.getElementById('minDb'), maxDbEl = document.getElementById('maxDb');
+        const syncDb = (changed) => {
+            let lo = parseInt(minDbEl.value), hi = parseInt(maxDbEl.value);
+            if (hi - lo < 10) {
+                if (changed === 'min') { hi = lo + 10; maxDbEl.value = hi; }
+                else { lo = hi - 10; minDbEl.value = lo; }
+            }
+            this.settings.minDb = parseInt(minDbEl.value);
+            this.settings.maxDb = parseInt(maxDbEl.value);
+            document.getElementById('minDbValue').textContent = fmtDb(this.settings.minDb);
+            document.getElementById('maxDbValue').textContent = fmtDb(this.settings.maxDb);
+            this.applyDbRange();
+        };
+        this.syncDbUI = () => {
+            minDbEl.value = this.settings.minDb; maxDbEl.value = this.settings.maxDb;
+            document.getElementById('minDbValue').textContent = fmtDb(this.settings.minDb);
+            document.getElementById('maxDbValue').textContent = fmtDb(this.settings.maxDb);
+            this.applyDbRange();
+        };
+        minDbEl.addEventListener('input', () => syncDb('min'));
+        maxDbEl.addEventListener('input', () => syncDb('max'));
+
         // Noise threshold control
         document.getElementById('noiseThreshold').addEventListener('input', (e) => {
             this.settings.noiseThreshold = parseInt(e.target.value);

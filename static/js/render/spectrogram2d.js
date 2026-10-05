@@ -71,7 +71,10 @@ class Spectrogram2DMethods {
                     float distFromEdge = ${CURSOR_X} - uvx;
                     float boostFactor = u_boost_intensity * exp(-distFromEdge * 40.0);
                     if (u_colormap == 3) {
-                        color *= 1.0 / (1.0 + boostFactor); // darken for Ink (reversed_greyscale)
+                        // Ink: deepen the ink by the same factor the other maps brighten by.
+                        // (Scaling the colour itself toward black turned near-white noise
+                        //  into dark blobs at the cursor.)
+                        color = clamp(vec3(1.0) - (vec3(1.0) - color) * (1.0 + boostFactor), 0.0, 1.0);
                     } else {
                         color *= 1.0 + boostFactor;          // brighten for all others
                     }

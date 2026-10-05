@@ -213,6 +213,15 @@
                 <p class="panel-hint">Larger = finer frequency detail, slower response.</p>
             </div>
             <div class="field">
+                <span class="field-label">Level range (dB)</span>
+                <div class="field-row"><label for="maxDb" class="field-sublabel">Ceiling — louder is clipped</label><span class="mono" id="maxDbValue">−30 dB</span></div>
+                <input type="range" id="maxDb" min="-70" max="0" step="1" value="-30" class="slider">
+                <div class="field-row"><label for="minDb" class="field-sublabel">Floor — quieter is blank</label><span class="mono" id="minDbValue">−100 dB</span></div>
+                <input type="range" id="minDb" min="-130" max="-40" step="1" value="-100" class="slider">
+                <div class="field-row"><span class="field-sublabel">Clipped now</span><span class="mono" id="clipReadout">—</span></div>
+                <p class="panel-hint">If clipping stays above ~1% while speaking, raise the ceiling: clipped harmonics render as flat solid blocks.</p>
+            </div>
+            <div class="field">
                 <div class="field-row"><label for="noiseThreshold" class="field-label">Noise threshold</label><span class="mono" id="noiseThresholdValue">0%</span></div>
                 <input type="range" id="noiseThreshold" min="0" max="100" value="0" class="slider">
             </div>

@@ -29,6 +29,8 @@ class SeeingSound {
         // Visualization settings
         this.settings = {
             fftSize: 2048, // Default is medium (2048)
+            minDb: -100,   // analyser level range: below → 0, above → 255 (clipped)
+            maxDb: -30,
             minFreq: 0,
             maxFreq: 4000,
             noiseThreshold: 0,
@@ -120,6 +122,7 @@ class SeeingSound {
             this.analyser = this.audioContext.createAnalyser();
             this.analyser.fftSize = this.settings.fftSize;
             this.analyser.smoothingTimeConstant = 0.2;
+            this.applyDbRange();
             
             // Create buffers for frequency data
             this.frequencyData = new Uint8Array(this.analyser.frequencyBinCount);
@@ -232,6 +235,7 @@ class SeeingSound {
             // Process audio data
             this.analyser.getByteFrequencyData(this.frequencyData);
             this.analyser.getByteTimeDomainData(this.timeData);
+            this.trackClipping();
             
             // Render using WebGL
             this.renderWebGL();
@@ -326,4 +330,38 @@ class SeeingSound {
         }
         return shader;
     }
+
+    /** Push settings.minDb / maxDb to the analyser (order matters: min must stay < max). */
+    applyDbRange() {
+        const a = this.analyser;
+        if (!a) return;
+        const lo = this.settings.minDb, hi = this.settings.maxDb;
+        if (lo >= a.maxDecibels) { a.maxDecibels = hi; a.minDecibels = lo; }
+        else { a.minDecibels = lo; a.maxDecibels = hi; }
+    }
+
+    /**
+     * Share of displayed bins sitting at 255 (i.e. louder than maxDb) over the
+     * last ~0.5 s. Clipped bins all render as the same flat maximum colour.
+     */
+    trackClipping() {
+        const d = this.frequencyData, nyq = this.settings.sampleRate / 2;
+        const i0 = Math.max(0, Math.floor(this.settings.minFreq / nyq * d.length));
+        const i1 = Math.min(d.length, Math.ceil(this.settings.maxFreq / nyq * d.length));
+        let n = 0, active = 0;
+        for (let i = i0; i < i1; i++) { if (d[i] === 255) n++; if (d[i] > 0) active++; }
+        this._clipN = (this._clipN || 0) + n;
+        this._clipActive = (this._clipActive || 0) + active;
+        this._clipFrames = (this._clipFrames || 0) + 1;
+        if (this._clipFrames >= 30) {
+            const el = document.getElementById('clipReadout');
+            if (el) {
+                const pct = this._clipActive ? 100 * this._clipN / this._clipActive : 0;
+                el.textContent = pct < 0.05 ? 'none' : `${pct.toFixed(1)}% of active bins`;
+                el.classList.toggle('is-warn', pct >= 1);
+            }
+            this._clipN = this._clipActive = this._clipFrames = 0;
+        }
+    }
+
 }

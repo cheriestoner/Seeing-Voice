@@ -102,6 +102,7 @@ class LayoutMethods {
         const parts = [
             `FFT ${s.fftSize}`,
             `${s.scale === 'log' ? 'Log' : 'Lin'} ${s.minFreq}–${s.maxFreq} Hz`,
+            `${s.minDb}…${s.maxDb} dB`,
             `${COLORMAP_NAMES[s.colormap] || s.colormap} on ${GROUND_NAMES[s.backgroundStyle] || s.backgroundStyle}`,
             `${s.scrollSpeed} ${s.scrollDirection === 'right' ? '→' : '←'}`,
             s.viewMode === '2d' ? '2D' : `3D ${s.viewMode}`,

@@ -227,6 +227,8 @@ button { cursor: pointer; }
     padding: 0;
 }
 .field legend { margin-bottom: 10px; }
+.field-sublabel { font-size: 13px; color: var(--ink); }
+#clipReadout.is-warn { color: var(--accent); font-weight: 500; }
 .field-row {
     display: flex;
     justify-content: space-between;
