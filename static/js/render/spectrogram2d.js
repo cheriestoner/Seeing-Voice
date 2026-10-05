@@ -37,7 +37,8 @@ class Spectrogram2DMethods {
             uniform int u_bg_mode; // 0 = dark, 1 = transparent, 2 = white
             uniform int u_soft_edge;      // 0 = hard, 1 = soft (only used when transparent)
             uniform float u_visible_seconds; // age of the data at the left edge
-            uniform float u_persistence;     // s for a full-scale level to fade to nothing
+            uniform float u_persistence;
+            uniform float u_ref_level;     // recent peak level the fade is measured against     // s for a full-scale level to fade to nothing
             uniform float u_boost_intensity; // flash brightness at cursor edge
             varying vec2 v_uv;
 
@@ -69,7 +70,7 @@ class Spectrogram2DMethods {
                 // Ageing: every component loses level at the same rate, so it
                 // fades out by its own loudness (quiet first), not by a mask
                 float age = (1.0 - uvx / ${CURSOR_X}) * u_visible_seconds;
-                amp -= age / u_persistence * (1.0 - u_threshold);
+                amp -= age / u_persistence * u_ref_level * (1.0 - u_threshold);
 
                 vec3 color = getColor(v_uv.y, amp);
 
@@ -171,6 +172,7 @@ class Spectrogram2DMethods {
         gl.uniform1i(gl.getUniformLocation(p, 'u_soft_edge'), this.settings.softEdge ? 1 : 0);
         gl.uniform1f(gl.getUniformLocation(p, 'u_visible_seconds'), s.visibleSeconds);
         gl.uniform1f(gl.getUniformLocation(p, 'u_persistence'), s.persistence);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_ref_level'), s.refLevel);
         gl.uniform1f(gl.getUniformLocation(p, 'u_boost_intensity'), this.settings.boostIntensity);
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

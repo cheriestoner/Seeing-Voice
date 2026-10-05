@@ -18,9 +18,15 @@ const COLUMN_RATE = 60;
 // Persistence: seconds for a full-scale component to fade out completely.
 // Every component loses level at the same rate (like the dB-linear decay of a
 // reverberant sound), so quiet parts disappear first and loud parts linger.
+// Measured against the recent peak level, not full scale.
 // trailLength slider 0..1 → 0.5 s .. 8 s (log scale).
 // Envelope follower attack (see writeColumn). Short enough to look instantaneous.
 const ATTACK_SECONDS = 0.008;
+
+// Ageing reference (see writeColumn): peak tracker fall time, and a floor so
+// that in silence the noise floor still fades within `persistence`.
+const PEAK_RELEASE_SECONDS = 3.0;
+const MIN_REF_LEVEL = 0.15;
 
 function persistenceSeconds(trail) { return 0.5 * Math.pow(16, trail); }
 

@@ -41,7 +41,7 @@ class SeeingSound {
             colormap: 'viridis', // 'experimental' or 'viridis'
             backgroundStyle: 'dark', // 'dark' | 'transparent'
             softEdge: true,
-            trailLength: 0.33,   // persistence, see persistenceSeconds() (0.33 ≈ 1.25 s)
+            trailLength: 0.5,    // persistence, see persistenceSeconds() (0.5 = 2 s)
             releaseMs: 120,      // per-bin release time constant (attack is ~instant)
             boostIntensity: 2.5, // flash brightness at cursor edge (0 = off)
             viewMode: '2d',      // '2d' | 'surface' | 'wireframe'
@@ -298,6 +298,7 @@ class SeeingSound {
             visibleWidthRatio: (canvasWidth / scrollSpeed) / this.texWidth,
             visibleSeconds: (canvasWidth / scrollSpeed) / COLUMN_RATE,   // age at the left edge
             persistence: persistenceSeconds(this.settings.trailLength),
+            refLevel: Math.max(this._refLevel || 0, MIN_REF_LEVEL),
             scaleMode: this.settings.scale === 'log' ? 1 : 0,
             colormapMode: { experimental: 0, viridis: 1, greyscale: 2, reversed_greyscale: 3 }[this.settings.colormap] ?? 1,
         };
@@ -335,6 +336,22 @@ class SeeingSound {
             out[i] = n;   // Uint8Array assignment truncates + clamps
         }
         gl.texSubImage2D(gl.TEXTURE_2D, 0, col, 0, 1, bins, gl.LUMINANCE, gl.UNSIGNED_BYTE, out);
+
+        // Reference level for ageing: the recent peak within the displayed
+        // band (instant rise, ~3 s fall). Fading is measured against it, so
+        // the loudest current sound lasts `persistence` seconds whatever the
+        // input gain; a fixed full-scale reference made quiet voices vanish
+        // within a few hundred ms, which looked like the image had stopped.
+        const nyq = this.settings.sampleRate / 2;
+        const i0 = Math.max(0, Math.floor(this.settings.minFreq / nyq * bins));
+        const i1 = Math.min(bins, Math.ceil(this.settings.maxFreq / nyq * bins));
+        let peak = 0;
+        for (let i = i0; i < i1; i++) if (env[i] > peak) peak = env[i];
+        const th = Math.max(this.settings.noiseThreshold / 100.0, MIN_THRESHOLD);
+        const level = Math.max(0, (peak / 255 - th) / (1 - th));
+        const kPeak = 1 - Math.exp(-hop / PEAK_RELEASE_SECONDS);
+        const r = this._refLevel || 0;
+        this._refLevel = level > r ? level : r + kPeak * (level - r);
     }
 
     /** Clear the history texture and restart the column clock (called on Start). */
@@ -346,6 +363,7 @@ class SeeingSound {
         this._t0 = this.audioContext ? this.audioContext.currentTime : 0;
         this._writeCount = 0;
         this._env = null;
+        this._refLevel = 0;
         this.writeHead = 0;
     }
 
