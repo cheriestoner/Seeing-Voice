@@ -41,11 +41,18 @@ class Spectrogram3DMethods {
 
             ${FREQ_GLSL}
 
+            // Raw level: drives the HEIGHT, so the terrain keeps its shape as it ages
             float sampleAmp(vec2 g) {
                 float x = fract(u_offset + (g.x - 1.0) * u_visible_width);
                 float y = freqTexY(clamp(g.y, 0.0, 1.0));
-                float age = (1.0 - g.x) * u_visible_seconds;   // same ageing as 2D
-                return texture2D(u_texture, vec2(x, y)).r - age / u_persistence * u_ref_level * (1.0 - u_threshold);
+                return texture2D(u_texture, vec2(x, y)).r;
+            }
+
+            // Aged level: drives the COLOUR only (same ageing as 2D). Applying it
+            // to the height made the whole surface slope down toward the past.
+            float agedAmp(vec2 g) {
+                float age = (1.0 - g.x) * u_visible_seconds;
+                return sampleAmp(g) - age / u_persistence * u_ref_level * (1.0 - u_threshold);
             }
 
             float heightAt(vec2 g) {
@@ -56,7 +63,7 @@ class Spectrogram3DMethods {
 
             void main() {
                 float h = heightAt(a_grid);
-                v_amp = sampleAmp(a_grid);
+                v_amp = agedAmp(a_grid);
                 v_freq = a_grid.y;
 
                 // Plane: x = time [-1,1], z = frequency [-1,1], y = amplitude
