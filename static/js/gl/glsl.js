@@ -28,6 +28,25 @@ const COLORMAP_GLSL = `
         return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
     }
 
+    // ── Shared intensity curve ───────────────────────────────────────────
+    // Every colormap goes through the same curve, so changing the colormap
+    // changes hue / polarity only, never how strongly a given level shows.
+    //   a = amplitude above the noise threshold, rescaled to [0,1]
+    //       (continuous at the threshold, so no hard-edged blobs)
+    //   v = a^1.23 — the effective lightness curve viridis has always had
+    //       (L* ≈ 91·v); the old sqrt() curve for grey / ink lifted the
+    //       8-bit noise floor ~10× more, which is what made them grainy.
+    float levelAbove(float amplitude) {
+        return clamp((amplitude - u_threshold) / max(1.0 - u_threshold, 1e-3), 0.0, 1.0);
+    }
+    float shapedLevel(float a) { return pow(a, 1.23); }
+
+    // CIE L* in [0,100] → sRGB-encoded grey in [0,1]
+    float greyFromLstar(float L) {
+        float Y = L > 8.0 ? pow((L + 16.0) / 116.0, 3.0) : L / 903.3;
+        return Y <= 0.0031308 ? 12.92 * Y : 1.055 * pow(Y, 1.0 / 2.4) - 0.055;
+    }
+
     vec3 getColorExperimental(float freqRatio, float amplitude) {
         vec3 c0 = vec3(0.39, 0.0, 0.0);
         vec3 c1 = vec3(1.0, 0.0, 0.0);
@@ -47,31 +66,29 @@ const COLORMAP_GLSL = `
         }
 
         if (amplitude < u_threshold) return vec3(0.027, 0.027, 0.067);
-
-        float brightness = pow(amplitude, 0.5);
-        brightness = max(brightness, 0.05);
-        return color * brightness;
+        // hue from frequency, value from the shared curve
+        float v = shapedLevel(levelAbove(amplitude));
+        return color * greyFromLstar(100.0 * v);
     }
 
     vec3 getColorViridis(float freqRatio, float amplitude) {
         if (amplitude < u_threshold) return vec3(0.027, 0.027, 0.067);
-        float brightness = pow(amplitude, 0.5);
-        brightness = max(brightness, 0.05);
-        return viridis(amplitude) * brightness;
+        // unchanged look at threshold 0: viridis(a)·sqrt(a) ≈ L* 91·a^1.23
+        float a = levelAbove(amplitude);
+        return viridis(a) * sqrt(a);
     }
 
+    // Night ground is L* ≈ 2, paper is L* 100: start exactly at the ground
     vec3 getColorGreyscale(float freqRatio, float amplitude) {
         if (amplitude < u_threshold) return vec3(0.027, 0.027, 0.067);
-        float brightness = pow(amplitude, 0.5);
-        brightness = max(brightness, 0.05);
-        return vec3(brightness);
+        float v = shapedLevel(levelAbove(amplitude));
+        return vec3(greyFromLstar(2.0 + 98.0 * v));
     }
 
     vec3 getColorReversedGreyscale(float freqRatio, float amplitude) {
         if (amplitude < u_threshold) return vec3(1.0);
-        float brightness = pow(amplitude, 0.5);
-        brightness = max(brightness, 0.05);
-        return vec3(1.0 - brightness);
+        float v = shapedLevel(levelAbove(amplitude));
+        return vec3(greyFromLstar(100.0 - 100.0 * v));
     }
 
     vec3 getColor(float freqRatio, float amplitude) {
