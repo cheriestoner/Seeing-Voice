@@ -91,6 +91,9 @@ class SeeingSound {
         if (savedPid) document.getElementById('participant-id-input').value = savedPid;
         this._renderCustomPresets();
 
+        // Rail + panel layout, stage resizing, status strip
+        this.initLayout();
+
         // Start ambient animations
         this.startAmbientAnimations();
     }

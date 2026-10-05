@@ -143,9 +143,7 @@ class ControlsMethods {
         // Noise threshold control
         document.getElementById('noiseThreshold').addEventListener('input', (e) => {
             this.settings.noiseThreshold = parseInt(e.target.value);
-            const thresholdIndicator = document.querySelector('.threshold-indicator');
-            thresholdIndicator.style.left = `${this.settings.noiseThreshold}%`;
-            document.querySelector('.threshold-value').textContent = `${this.settings.noiseThreshold}%`;
+            document.getElementById('noiseThresholdValue').textContent = `${this.settings.noiseThreshold}%`;
             
             // Update noise bars to visualize threshold
             this.updateNoiseVisualization();
@@ -270,35 +268,27 @@ class ControlsMethods {
             this.updateRangeSliderTrack();
         });
 
-        // Fullscreen toggle
+        // Participant view: the stage takes over the whole window (Esc to leave)
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const spectrogramContainer = document.querySelector('.spectrogram-container');
         if (fullscreenBtn && spectrogramContainer) {
             const iconExpand = fullscreenBtn.querySelector('.icon-expand');
             const iconCollapse = fullscreenBtn.querySelector('.icon-collapse');
-
-            fullscreenBtn.style.opacity = '0';
-            fullscreenBtn.style.transition = 'opacity 0.2s ease, background 0.2s ease';
-            if (iconExpand) iconExpand.style.display = 'block';
-            if (iconCollapse) iconCollapse.style.display = 'none';
-
-            // JS-driven hover visibility — CSS parent-hover chain is unreliable in Safari
-            spectrogramContainer.addEventListener('mouseenter', () => {
-                fullscreenBtn.style.opacity = '1';
-            });
-            spectrogramContainer.addEventListener('mouseleave', () => {
-                if (!spectrogramContainer.classList.contains('expanded')) {
-                    fullscreenBtn.style.opacity = '0';
-                }
-            });
-
-            fullscreenBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const expanded = spectrogramContainer.classList.toggle('expanded');
+            this.setParticipantView = (on) => {
+                const expanded = spectrogramContainer.classList.toggle('expanded', on);
                 if (iconExpand) iconExpand.style.display = expanded ? 'none' : 'block';
                 if (iconCollapse) iconCollapse.style.display = expanded ? 'block' : 'none';
-                fullscreenBtn.style.opacity = '1';
+                fullscreenBtn.setAttribute('aria-label', expanded ? 'Leave participant view' : 'Participant view');
                 requestAnimationFrame(() => this.setupHighDpiCanvas());
+            };
+            fullscreenBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.setParticipantView(!spectrogramContainer.classList.contains('expanded'));
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && spectrogramContainer.classList.contains('expanded')) {
+                    this.setParticipantView(false);
+                }
             });
         }
     }
@@ -330,6 +320,8 @@ class ControlsMethods {
         update('scale-radio', this.settings.scale);
         update('background-radio', this.settings.backgroundStyle);
         update('view-radio', this.settings.viewMode);
+
+        if (this.updateStatusSummary) this.updateStatusSummary();
     }
 
     /**
@@ -500,8 +492,7 @@ class ControlsMethods {
         
         // Update noise threshold
         document.getElementById('noiseThreshold').value = this.settings.noiseThreshold;
-        document.querySelector('.threshold-indicator').style.left = `${this.settings.noiseThreshold}%`;
-        document.querySelector('.threshold-value').textContent = `${this.settings.noiseThreshold}%`;
+        document.getElementById('noiseThresholdValue').textContent = `${this.settings.noiseThreshold}%`;
         
         // Update scroll speed
         document.querySelector(`input[name="speed-radio"][value="${this.settings.scrollSpeed}"]`).checked = true;

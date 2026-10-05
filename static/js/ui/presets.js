@@ -66,8 +66,7 @@ class PresetsMethods {
         document.getElementById('maxFreqLabel').textContent = `${s.maxFreq} Hz`;
 
         document.getElementById('noiseThreshold').value = s.noiseThreshold;
-        document.querySelector('.threshold-indicator').style.left = `${s.noiseThreshold}%`;
-        document.querySelector('.threshold-value').textContent = `${s.noiseThreshold}%`;
+        document.getElementById('noiseThresholdValue').textContent = `${s.noiseThreshold}%`;
         this.updateNoiseVisualization();
 
         document.getElementById('trailLength').value = s.trailLength;

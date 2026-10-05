@@ -3,379 +3,269 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seeing Sound | Beautiful Sound Visualization</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+    <title>Seeing Sound</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
     <link rel="stylesheet" href="static/css/styles.css">
 </head>
 <body>
-    <div class="app-container">
-        <div class="backdrop-blur"></div>
-        <div class="backdrop-gradient"></div>
-        
-        <!-- <a href="/retro" class="future-travel-btn">Travel to the Future</a> -->
-        <!-- <a href="/soundscape" class="soundscape-btn">Experience Beyond Sound</a> -->
+<div class="app">
 
-        <header>
-            <div class="logo-container">
-                <img src="static/verti-noir.png" alt="Seeing Sound" class="logo-img">
-            </div>
-            <p class="tagline">Experience sound in a new dimension</p>
-            
-            <button id="startButton" class="primary-btn">
-                <span class="btn-icon">
-                    <svg class="icon-play" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 5.14V19.14C8 19.94 8.93 20.44 9.6 20L18.6 13C19.2 12.6 19.2 11.7 18.6 11.3L9.6 4.3C8.93 3.87 8 4.36 8 5.14Z" fill="currentColor"/>
-                    </svg>
-                    <svg class="icon-stop" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="6" y="6" width="12" height="12" rx="1" fill="currentColor"/>
-                    </svg>
-                </span>
-                <span class="btn-text">Start Listening</span>
-            </button>
-        </header>
+    <!-- ── Icon rail: one button per settings panel ─────────────────────── -->
+    <nav class="rail" aria-label="Settings">
+        <div class="rail-mark" aria-hidden="true">S</div>
 
-        <main>
-                <div class="spectrogram-container">
-                    <button class="fullscreen-btn" id="fullscreenBtn" title="Toggle fullscreen" aria-label="Toggle fullscreen">
-                        <svg class="icon-expand" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18">
-                            <path d="M3 8V3H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M21 8V3H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M3 16V21H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M21 16V21H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <svg class="icon-collapse" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18">
-                            <path d="M8 3V8H3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M16 3V8H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M8 21V16H3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M16 21V16H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
-                    <canvas id="spectrogramCanvas"></canvas>
-                    <div id="fullscreen-preset-switcher" class="fullscreen-preset-switcher"></div>
-                    <div class="frequency-scale">
-                        <div class="scale-label">20 kHz</div>
-                        <div class="scale-label">10 kHz</div>
-                        <div class="scale-label">5 kHz</div>
-                        <div class="scale-label">2 kHz</div>
-                        <div class="scale-label">1 kHz</div>
-                        <div class="scale-label">500 Hz</div>
-                        <div class="scale-label">100 Hz</div>
-                        <div class="scale-label">20 Hz</div>
-                        <div class="scale-label">0 Hz</div>
-                    </div>
-                </div>
+        <button class="rail-btn is-active" data-panel="mapping" aria-label="Mapping" title="Mapping">
+            <svg viewBox="0 0 24 24"><path d="M3 15c2-6 4-6 5.5 0s3.5 6 5.5 0 3.5-6 7-3"/></svg>
+            <span>Mapping</span>
+        </button>
+        <button class="rail-btn" data-panel="frequency" aria-label="Frequency" title="Frequency">
+            <svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 15l3-5 3 3 5-7"/></svg>
+            <span>Freq</span>
+        </button>
+        <button class="rail-btn" data-panel="colour" aria-label="Visualisation colour" title="Visualisation colour">
+            <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-.9 2-1.8 0-1-.9-1.6-.2-2.6.8-1 2.6-.4 4-1.1 1.6-.8 2.2-2.4 2.2-3.9A8.4 8.4 0 0 0 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="11" cy="7.5" r="1"/><circle cx="15.5" cy="8.5" r="1"/></svg>
+            <span>Colour</span>
+        </button>
+        <button class="rail-btn" data-panel="motion" aria-label="Motion and view" title="Motion &amp; view">
+            <svg viewBox="0 0 24 24"><path d="M4 12h14M14 7l5 5-5 5"/></svg>
+            <span>Motion</span>
+        </button>
+        <button class="rail-btn" data-panel="detail" aria-label="Analysis detail" title="Analysis detail">
+            <svg viewBox="0 0 24 24"><path d="M4 18V9M9 18V5M14 18v-7M19 18V8"/></svg>
+            <span>Detail</span>
+        </button>
+        <button class="rail-btn" data-panel="presets" aria-label="Presets" title="Presets">
+            <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
+            <span>Presets</span>
+        </button>
+    </nav>
 
-            <section class="controls-section">
-                <div class="card-container">
-                    <div class="control-card">
-                        <div class="card-header">
-                            <div class="card-icon">
-                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 6V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M18 12L6 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M16 8L8 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M8 8L16 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                </svg>
-                            </div>
-                            <h2>Detail Level</h2>
-                        </div>
-                        <div class="card-content">
-                            <div class="segmented-control segmented-control--md">
-                                <input type="radio" name="fft-radio" id="fft-low" value="1024">
-                                <label for="fft-low">Low</label>
-                                
-                                <input type="radio" name="fft-radio" id="fft-medium" value="2048" checked>
-                                <label for="fft-medium">Medium</label>
-                                
-                                <input type="radio" name="fft-radio" id="fft-high" value="4096">
-                                <label for="fft-high">High</label>
-                                
-                                <span class="selection-indicator"></span>
-                            </div>
-                            <div class="tooltip">Higher values show more frequency detail but may reduce responsiveness</div>
-                        </div>
-                    </div>
+    <!-- ── Settings panel: exactly one section visible at a time ────────── -->
+    <aside class="panel" id="settingsPanel">
 
-                    <div class="control-card">
-                        <div class="card-header">
-                            <div class="card-icon">
-                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                                    <path d="M12 22V12M12 12L21 7M12 12L3 7" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                                </svg>
-                            </div>
-                            <h2>View</h2>
-                        </div>
-                        <div class="card-content">
-                            <div class="segmented-control segmented-control--md" style="--sc-count: 3">
-                                <input type="radio" name="view-radio" id="view-2d" value="2d" checked>
-                                <label for="view-2d">2D</label>
-                                <input type="radio" name="view-radio" id="view-surface" value="surface">
-                                <label for="view-surface">Surface</label>
-                                <input type="radio" name="view-radio" id="view-wireframe" value="wireframe">
-                                <label for="view-wireframe">Wireframe</label>
-                                <span class="selection-indicator"></span>
-                            </div>
-                            <div id="heightScale3dRow" style="display:none">
-                                <span class="control-label">Height</span>
-                                <div class="slider-with-preview">
-                                    <input type="range" id="heightScale3d" min="0.1" max="1.5" step="0.05" value="0.6" class="slider-input">
-                                    <div class="threshold-value" id="heightScale3dValue">0.60</div>
-                                </div>
-                            </div>
-                            <div class="tooltip">Surface and Wireframe show the spectrogram as a 3D terrain — drag to orbit, scroll to zoom</div>
-                        </div>
-                    </div>
+        <section class="panel-section is-active" data-section="mapping">
+            <h2>Mapping</h2>
+            <p class="panel-hint">What the voice is turned into.</p>
+            <fieldset class="field">
+                <legend>Drawn on the canvas</legend>
+                <label class="choice">
+                    <input type="radio" name="mapping-radio" value="spectrogram" checked>
+                    <span>Spectrogram</span>
+                </label>
+                <label class="choice is-disabled">
+                    <input type="radio" name="mapping-radio" value="pitch" disabled>
+                    <span>Pitch contour × k</span>
+                    <em>next</em>
+                </label>
+            </fieldset>
+        </section>
 
-                    <div class="control-card">
-                        <div class="card-header">
-                            <div class="card-icon">
-                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
-                                    <circle cx="6" cy="18" r="2" fill="currentColor"/>
-                                    <circle cx="18" cy="18" r="2" fill="currentColor"/>
-                                    <circle cx="6" cy="6" r="2" fill="currentColor"/>
-                                    <circle cx="18" cy="6" r="2" fill="currentColor"/>
-                                </svg>
-                            </div>
-                            <h2>Color Scheme</h2>
-                        </div>
-                        <div class="card-content">
-                            <div class="colormap-options">
-                                <label class="colormap-option">
-                                    <input type="radio" name="colormap-radio" value="viridis" checked>
-                                    <span class="colormap-swatch viridis-swatch"></span>
-                                    <span class="colormap-label">Viridis</span>
-                                </label>
-                                <label class="colormap-option">
-                                    <input type="radio" name="colormap-radio" value="experimental">
-                                    <span class="colormap-swatch experimental-swatch"></span>
-                                    <span class="colormap-label">Crossmodal</span>
-                                </label>
-                                <label class="colormap-option">
-                                    <input type="radio" name="colormap-radio" value="greyscale">
-                                    <span class="colormap-swatch greyscale-swatch"></span>
-                                    <span class="colormap-label">Greyscale</span>
-                                </label>
-                                <label class="colormap-option">
-                                    <input type="radio" name="colormap-radio" value="reversed_greyscale">
-                                    <span class="colormap-swatch reversed-greyscale-swatch"></span>
-                                    <span class="colormap-label">Ink</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="control-card">
-                        <div class="card-header">
-                            <div class="card-icon">
-                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
-                                    <path d="M3 9h18M9 21V9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                </svg>
-                            </div>
-                            <h2>Background</h2>
-                        </div>
-                        <div class="card-content">
-                            <div class="segmented-control segmented-control--md" style="--sc-count: 3">
-                                <input type="radio" name="background-radio" id="bg-dark" value="dark" checked>
-                                <label for="bg-dark">Dark</label>
-                                <input type="radio" name="background-radio" id="bg-white" value="white">
-                                <label for="bg-white">White</label>
-                                <input type="radio" name="background-radio" id="bg-transparent" value="transparent">
-                                <label for="bg-transparent">Transparent</label>
-                                <span class="selection-indicator"></span>
-                            </div>
-                            <label class="soft-edge-option" id="softEdgeOption" style="display:none">
-                                <input type="checkbox" id="softEdgeCheck" checked>
-                                <span>Soft edges</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="control-card">
-                        <div class="card-header">
-                            <div class="card-icon">
-                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M2 12H4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M6 12H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M10 12H12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M14 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M18 12H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M22 12H24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                </svg>
-                            </div>
-                            <h2>Frequency</h2>
-                            <div class="segmented-control segmented-control--sm" style="--sc-count: 2">
-                                <input type="radio" name="scale-radio" id="scale-linear" value="linear" checked>
-                                <label for="scale-linear">Lin</label>
-                                <input type="radio" name="scale-radio" id="scale-log" value="log">
-                                <label for="scale-log">Log</label>
-                                <span class="selection-indicator"></span>
-                            </div>
-                        </div>
-                        <div class="card-content">
-                            <div class="range-slider-container">
-                                <div class="slider-labels">
-                                    <span id="minFreqLabel">0 Hz</span>
-                                    <span id="maxFreqLabel">4000 Hz</span>
-                                </div>
-                                <div class="dual-slider">
-                                    <div class="slider-track"></div>
-                                    <div class="slider-range"></div>
-                                    <input type="range" id="minFreq" min="0" max="1000" value="0" class="range-slider-input">
-                                    <input type="range" id="maxFreq" min="0" max="1000" value="1000" class="range-slider-input">
-                                </div>
-                                <div class="freq-number-row">
-                                    <label for="maxFreqInput">Max</label>
-                                    <input type="number" id="maxFreqInput" min="0" max="22050" value="4000">
-                                    <span>Hz</span>
-                                </div>
-                            </div>
-                            <div class="preset-buttons">
-                                <button class="preset-btn" data-preset="music">
-                                    <span class="preset-icon">🎵</span>
-                                    <span class="preset-label">Music</span>
-                                </button>
-<button class="preset-btn" data-preset="default">
-                                    <span class="preset-icon">🗣️</span>
-                                    <span class="preset-label">Speech</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="control-card">
-                        <div class="card-header">
-                            <div class="card-icon">
-                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 4V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M4 12H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M12 16V20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M16 12H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
-                                </svg>
-                            </div>
-                            <h2>Noise Threshold</h2>
-                        </div>
-                        <div class="card-content">
-                            <div class="slider-with-preview">
-                                <input type="range" id="noiseThreshold" min="0" max="100" value="0" class="slider-input">
-                                <div class="threshold-preview">
-                                    <div class="noise-visualization">
-                                        <div class="noise-bar"></div>
-                                        <div class="noise-bar"></div>
-                                        <div class="noise-bar"></div>
-                                        <div class="noise-bar"></div>
-                                        <div class="noise-bar"></div>
-                                        <div class="noise-bar"></div>
-                                        <div class="noise-bar"></div>
-                                        <div class="noise-bar"></div>
-                                    </div>
-                                    <div class="threshold-indicator"></div>
-                                </div>
-                                <div class="threshold-value">0%</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="control-card">
-                        <div class="card-header">
-                            <div class="card-icon">
-                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 3L12 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M5 8C7 8 9 10 12 10C15 10 17 8 19 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M5 16C7 16 9 14 12 14C15 14 17 16 19 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                </svg>
-                            </div>
-                            <h2>Flash &amp; Trail</h2>
-                        </div>
-                        <div class="card-content">
-                            <span class="control-label">Trail Length</span>
-                            <div class="slider-with-preview">
-                                <input type="range" id="trailLength" min="0" max="1" step="0.01" value="0.33" class="slider-input">
-                                <div class="threshold-value" id="trailLengthValue">33%</div>
-                            </div>
-                            <span class="control-label">Flash Intensity</span>
-                            <div class="slider-with-preview">
-                                <input type="range" id="boostIntensity" min="0" max="5" step="0.1" value="2.5" class="slider-input">
-                                <div class="threshold-value" id="boostIntensityValue">2.5</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="control-card">
-                        <div class="card-header">
-                            <div class="card-icon">
-                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M15 8L19 12L15 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </div>
-                            <h2>Scroll Settings</h2>
-                        </div>
-                        <div class="card-content">
-                            <span class="control-label">Speed</span>
-                            <div class="segmented-control segmented-control--md">
-                                <input type="radio" name="speed-radio" id="speed-slow" value="slow">
-                                <label for="speed-slow">Slow</label>
-
-                                <input type="radio" name="speed-radio" id="speed-medium" value="medium" checked>
-                                <label for="speed-medium">Medium</label>
-
-                                <input type="radio" name="speed-radio" id="speed-fast" value="fast">
-                                <label for="speed-fast">Fast</label>
-
-                                <span class="selection-indicator"></span>
-                            </div>
-                            <span class="control-label">Direction</span>
-                            <div class="segmented-control segmented-control--md" style="--sc-count: 2">
-                                <input type="radio" name="direction-radio" id="direction-left" value="left" checked>
-                                <label for="direction-left">←</label>
-                                <input type="radio" name="direction-radio" id="direction-right" value="right">
-                                <label for="direction-right">→</label>
-                                <span class="selection-indicator"></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="control-card presets-card">
-                        <div class="card-header">
-                            <div class="card-icon">
-                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
-                                          stroke="currentColor" stroke-width="2"
-                                          stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </div>
-                            <h2>My Presets</h2>
-                        </div>
-                        <div class="card-content">
-                            <div class="participant-id-row">
-                                <label for="participant-id-input">Participant ID</label>
-                                <input type="text" id="participant-id-input" placeholder="e.g. P01" maxlength="20" autocomplete="off">
-                            </div>
-                            <div class="preset-save-row">
-                                <input type="text" id="preset-name-input" placeholder="Preset name…" maxlength="30" autocomplete="off">
-                                <button id="save-preset-btn">Save</button>
-                            </div>
-                            <div id="custom-presets-list" class="custom-presets-list"></div>
-                            <button id="export-presets-btn">Export JSON</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <footer>
-            <div class="footer-content">
-                <p class="footer-tagline">Developed by ENES Bioacoustics Lab &middot; 2026</p>
-                <div class="footer-affiliations">
-                    <img src="static/ENESlogo2024.png" alt="ENES" class="affiliation-logo">
+        <section class="panel-section" data-section="frequency">
+            <h2>Frequency</h2>
+            <div class="field">
+                <span class="field-label">Axis</span>
+                <div class="segmented-control" style="--sc-count: 2">
+                    <input type="radio" name="scale-radio" id="scale-linear" value="linear" checked>
+                    <label for="scale-linear">Linear</label>
+                    <input type="radio" name="scale-radio" id="scale-log" value="log">
+                    <label for="scale-log">Log</label>
+                    <span class="selection-indicator"></span>
                 </div>
             </div>
+            <div class="field">
+                <div class="field-row">
+                    <span class="field-label">Range</span>
+                    <span class="mono"><span id="minFreqLabel">0 Hz</span> – <span id="maxFreqLabel">4000 Hz</span></span>
+                </div>
+                <div class="dual-slider">
+                    <div class="slider-track"></div>
+                    <div class="slider-range"></div>
+                    <input type="range" id="minFreq" min="0" max="1000" value="0" class="range-slider-input" aria-label="Minimum frequency">
+                    <input type="range" id="maxFreq" min="0" max="1000" value="1000" class="range-slider-input" aria-label="Maximum frequency">
+                </div>
+                <div class="field-row">
+                    <label for="maxFreqInput" class="field-label">Slider ceiling</label>
+                    <span class="number-input"><input type="number" id="maxFreqInput" min="0" max="22050" value="4000"><span>Hz</span></span>
+                </div>
+            </div>
+            <div class="field">
+                <span class="field-label">Quick ranges</span>
+                <div class="chip-row">
+                    <button class="preset-btn chip" data-preset="default">Speech 0–4 kHz</button>
+                    <button class="preset-btn chip" data-preset="music">Music 20–20 kHz</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel-section" data-section="colour">
+            <h2>Visualisation colour</h2>
+            <p class="panel-hint">Applies to the canvas only — the interface stays light.</p>
+            <fieldset class="field">
+                <legend>Colormap</legend>
+                <label class="choice colormap-option">
+                    <input type="radio" name="colormap-radio" value="reversed_greyscale">
+                    <span>Ink</span><i class="swatch swatch-ink"></i>
+                </label>
+                <label class="choice colormap-option">
+                    <input type="radio" name="colormap-radio" value="viridis" checked>
+                    <span>Viridis</span><i class="swatch swatch-viridis"></i>
+                </label>
+                <label class="choice colormap-option">
+                    <input type="radio" name="colormap-radio" value="experimental">
+                    <span>Crossmodal</span><i class="swatch swatch-crossmodal"></i>
+                </label>
+                <label class="choice colormap-option">
+                    <input type="radio" name="colormap-radio" value="greyscale">
+                    <span>Greyscale</span><i class="swatch swatch-grey"></i>
+                </label>
+            </fieldset>
+            <div class="field">
+                <span class="field-label">Canvas ground</span>
+                <div class="segmented-control" style="--sc-count: 3">
+                    <input type="radio" name="background-radio" id="bg-white" value="white">
+                    <label for="bg-white">Paper</label>
+                    <input type="radio" name="background-radio" id="bg-dark" value="dark" checked>
+                    <label for="bg-dark">Night</label>
+                    <input type="radio" name="background-radio" id="bg-transparent" value="transparent">
+                    <label for="bg-transparent">Clear</label>
+                    <span class="selection-indicator"></span>
+                </div>
+                <label class="toggle" id="softEdgeOption" style="display:none">
+                    <span>Soft edges</span>
+                    <input type="checkbox" id="softEdgeCheck" checked>
+                </label>
+            </div>
+            <div class="field">
+                <div class="field-row"><label for="trailLength" class="field-label">Trail</label><span class="mono" id="trailLengthValue">33%</span></div>
+                <input type="range" id="trailLength" min="0" max="1" step="0.01" value="0.33" class="slider">
+            </div>
+            <div class="field">
+                <div class="field-row"><label for="boostIntensity" class="field-label">Onset flash</label><span class="mono" id="boostIntensityValue">2.5</span></div>
+                <input type="range" id="boostIntensity" min="0" max="5" step="0.1" value="2.5" class="slider">
+            </div>
+        </section>
+
+        <section class="panel-section" data-section="motion">
+            <h2>Motion &amp; view</h2>
+            <div class="field">
+                <span class="field-label">Scroll speed</span>
+                <div class="segmented-control" style="--sc-count: 3">
+                    <input type="radio" name="speed-radio" id="speed-slow" value="slow">
+                    <label for="speed-slow">Slow</label>
+                    <input type="radio" name="speed-radio" id="speed-medium" value="medium" checked>
+                    <label for="speed-medium">Medium</label>
+                    <input type="radio" name="speed-radio" id="speed-fast" value="fast">
+                    <label for="speed-fast">Fast</label>
+                    <span class="selection-indicator"></span>
+                </div>
+            </div>
+            <div class="field">
+                <span class="field-label">Direction</span>
+                <div class="segmented-control" style="--sc-count: 2">
+                    <input type="radio" name="direction-radio" id="direction-left" value="left" checked>
+                    <label for="direction-left">← Leftward</label>
+                    <input type="radio" name="direction-radio" id="direction-right" value="right">
+                    <label for="direction-right">Rightward →</label>
+                    <span class="selection-indicator"></span>
+                </div>
+            </div>
+            <div class="field">
+                <span class="field-label">View</span>
+                <div class="segmented-control" style="--sc-count: 3">
+                    <input type="radio" name="view-radio" id="view-2d" value="2d" checked>
+                    <label for="view-2d">2D</label>
+                    <input type="radio" name="view-radio" id="view-surface" value="surface">
+                    <label for="view-surface">Surface</label>
+                    <input type="radio" name="view-radio" id="view-wireframe" value="wireframe">
+                    <label for="view-wireframe">Wireframe</label>
+                    <span class="selection-indicator"></span>
+                </div>
+                <p class="panel-hint">3D views: drag to orbit, scroll to zoom.</p>
+            </div>
+            <div class="field" id="heightScale3dRow" style="display:none">
+                <div class="field-row"><label for="heightScale3d" class="field-label">3D height</label><span class="mono" id="heightScale3dValue">0.60</span></div>
+                <input type="range" id="heightScale3d" min="0.1" max="1.5" step="0.05" value="0.6" class="slider">
+            </div>
+        </section>
+
+        <section class="panel-section" data-section="detail">
+            <h2>Analysis detail</h2>
+            <div class="field">
+                <span class="field-label">FFT size</span>
+                <div class="segmented-control" style="--sc-count: 3">
+                    <input type="radio" name="fft-radio" id="fft-low" value="1024">
+                    <label for="fft-low">1024</label>
+                    <input type="radio" name="fft-radio" id="fft-medium" value="2048" checked>
+                    <label for="fft-medium">2048</label>
+                    <input type="radio" name="fft-radio" id="fft-high" value="4096">
+                    <label for="fft-high">4096</label>
+                    <span class="selection-indicator"></span>
+                </div>
+                <p class="panel-hint">Larger = finer frequency detail, slower response.</p>
+            </div>
+            <div class="field">
+                <div class="field-row"><label for="noiseThreshold" class="field-label">Noise threshold</label><span class="mono" id="noiseThresholdValue">0%</span></div>
+                <input type="range" id="noiseThreshold" min="0" max="100" value="0" class="slider">
+            </div>
+        </section>
+
+        <section class="panel-section" data-section="presets">
+            <h2>Presets</h2>
+            <div class="field">
+                <label for="participant-id-input" class="field-label">Participant ID</label>
+                <input type="text" id="participant-id-input" class="text-input" placeholder="e.g. P01" maxlength="20" autocomplete="off">
+            </div>
+            <div class="field">
+                <label for="preset-name-input" class="field-label">Save current settings</label>
+                <div class="inline-form">
+                    <input type="text" id="preset-name-input" class="text-input" placeholder="Preset name" maxlength="30" autocomplete="off">
+                    <button id="save-preset-btn" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+            <div id="custom-presets-list" class="custom-presets-list"></div>
+            <button id="export-presets-btn" class="btn btn-ghost">Export JSON</button>
+        </section>
+
+        <footer class="panel-footer">
+            <img src="static/ENESlogo2024.png" alt="ENES" class="affiliation-logo">
+            <span>ENES Bioacoustics Lab · 2026</span>
         </footer>
-    </div>
+    </aside>
+
+    <!-- ── Stage: the visualisation (also the participant view) ─────────── -->
+    <main class="stage">
+        <div class="spectrogram-container">
+            <canvas id="spectrogramCanvas"></canvas>
+
+            <div class="frequency-scale" aria-hidden="true">
+                <div class="scale-label"></div><div class="scale-label"></div><div class="scale-label"></div>
+                <div class="scale-label"></div><div class="scale-label"></div><div class="scale-label"></div>
+                <div class="scale-label"></div><div class="scale-label"></div><div class="scale-label"></div>
+            </div>
+
+            <div id="fullscreen-preset-switcher" class="fullscreen-preset-switcher"></div>
+
+            <button class="fullscreen-btn" id="fullscreenBtn" title="Participant view (Esc to leave)">
+                <svg class="icon-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+                <svg class="icon-collapse" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+                <span class="fullscreen-label">Participant view</span>
+            </button>
+
+            <div class="stage-controls">
+                <button id="startButton" class="start-btn">
+                    <span class="btn-icon">
+                        <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5.5v13a.8.8 0 0 0 1.2.7l10-6.5a.8.8 0 0 0 0-1.4l-10-6.5A.8.8 0 0 0 8 5.5z"/></svg>
+                        <svg class="icon-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                    </span>
+                    <span class="btn-text">Start Listening</span>
+                </button>
+            </div>
+
+            <div class="status-strip mono" id="statusStrip" aria-live="off"></div>
+        </div>
+    </main>
+</div>
 
     <script src="static/js/config.js"></script>
     <script src="static/js/gl/glsl.js"></script>
@@ -385,7 +275,8 @@
     <script src="static/js/render/spectrogram3d.js"></script>
     <script src="static/js/ui/notify.js"></script>
     <script src="static/js/ui/controls.js"></script>
+    <script src="static/js/ui/layout.js"></script>
     <script src="static/js/ui/presets.js"></script>
     <script src="static/js/main.js"></script>
 </body>
-</html> 
+</html>
