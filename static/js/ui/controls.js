@@ -140,10 +140,10 @@ class ControlsMethods {
             document.getElementById('boostIntensityValue').textContent = parseFloat(e.target.value).toFixed(1);
         });
 
-        // Per-bin release time
-        document.getElementById('releaseMs').addEventListener('input', (e) => {
-            this.settings.releaseMs = parseInt(e.target.value);
-            document.getElementById('releaseMsValue').textContent = `${this.settings.releaseMs} ms`;
+        // Spectral smoothing time constant
+        document.getElementById('smoothingMs').addEventListener('input', (e) => {
+            this.settings.smoothingMs = parseInt(e.target.value);
+            document.getElementById('smoothingMsValue').textContent = `${this.settings.smoothingMs} ms`;
         });
 
         // Analyser level range (dB). Keep at least 10 dB between floor and ceiling.

@@ -32,7 +32,7 @@ class PresetsMethods {
         if (!this.settings.viewMode) this.settings.viewMode = '2d';
         if (this.settings.heightScale3d == null) this.settings.heightScale3d = 0.6;
         if (s.minDb == null) this.settings.minDb = -100;
-        if (s.releaseMs == null) this.settings.releaseMs = 120;
+        if (s.smoothingMs == null) this.settings.smoothingMs = 10;
         if (s.maxDb == null) this.settings.maxDb = -30;
         if (this.settings.viewMode !== '2d' && !this._webgl3dOK) this.settings.viewMode = '2d';
 
@@ -74,8 +74,8 @@ class PresetsMethods {
 
         document.getElementById('trailLength').value = s.trailLength;
         document.getElementById('trailLengthValue').textContent = persistenceSeconds(s.trailLength).toFixed(1) + ' s';
-        document.getElementById('releaseMs').value = this.settings.releaseMs;
-        document.getElementById('releaseMsValue').textContent = `${this.settings.releaseMs} ms`;
+        document.getElementById('smoothingMs').value = this.settings.smoothingMs;
+        document.getElementById('smoothingMsValue').textContent = `${this.settings.smoothingMs} ms`;
 
         if (this.syncDbUI) this.syncDbUI();
 

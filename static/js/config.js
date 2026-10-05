@@ -10,7 +10,7 @@
 const MIN_THRESHOLD = 3e-3; // Minimum shader threshold — prevents near-silent pixels from showing palette color
 const CURSOR_X = 0.67;      // Horizontal position of the newest-data cursor (0 = left, 1 = right)
 
-// Spectrogram columns per second of audio. One column used to be written per
+// Spectrogram columns per second (wall clock ≡ audio time for live input). One column used to be written per
 // animation frame; 60/s keeps the old on-screen speeds on 60 Hz displays while
 // making them identical on 120 Hz (ProMotion) displays.
 const COLUMN_RATE = 60;
@@ -20,11 +20,9 @@ const COLUMN_RATE = 60;
 // reverberant sound), so quiet parts disappear first and loud parts linger.
 // Measured against the recent peak level, not full scale.
 // trailLength slider 0..1 → 0.5 s .. 8 s (log scale).
-// Envelope follower attack (see writeColumn). Short enough to look instantaneous.
-const ATTACK_SECONDS = 0.008;
-
 // Ageing reference (see writeColumn): peak tracker fall time, and a floor so
 // that in silence the noise floor still fades within `persistence`.
+const PEAK_RISE_SECONDS = 0.5;
 const PEAK_RELEASE_SECONDS = 3.0;
 const MIN_REF_LEVEL = 0.15;
 

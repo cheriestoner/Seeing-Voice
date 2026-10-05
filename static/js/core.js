@@ -42,7 +42,7 @@ class SeeingSound {
             backgroundStyle: 'dark', // 'dark' | 'transparent'
             softEdge: true,
             trailLength: 0.5,    // persistence, see persistenceSeconds() (0.5 = 2 s)
-            releaseMs: 120,      // per-bin release time constant (attack is ~instant)
+            smoothingMs: 10,     // spectral smoothing time constant (≈ the old 0.2 per frame at 60 Hz)
             boostIntensity: 2.5, // flash brightness at cursor edge (0 = off)
             viewMode: '2d',      // '2d' | 'surface' | 'wireframe'
             heightScale3d: 0.6   // vertical exaggeration for the 3D surface
@@ -122,8 +122,7 @@ class SeeingSound {
             // Create analyser node
             this.analyser = this.audioContext.createAnalyser();
             this.analyser.fftSize = this.settings.fftSize;
-            // Smoothing is done per column on the audio clock (writeColumn), not here
-            this.analyser.smoothingTimeConstant = 0;
+            this._lastRead = null;   // smoothing is set per read in render()
             this.applyDbRange();
             
             // Create buffers for frequency data
@@ -238,6 +237,14 @@ class SeeingSound {
         
         try {
             // Process audio data
+            // AnalyserNode smoothing is applied once per read, i.e. per animation
+            // frame. Derive it from the real time since the last read so the
+            // smoothing time constant is the same at any refresh rate.
+            const now = performance.now() / 1000;
+            const dt = this._lastRead == null ? 1 / 60 : Math.min(now - this._lastRead, 0.25);
+            this._lastRead = now;
+            const tauS = this.settings.smoothingMs / 1000;
+            this.analyser.smoothingTimeConstant = tauS > 0 ? Math.exp(-dt / tauS) : 0;
             this.analyser.getByteFrequencyData(this.frequencyData);
             this.analyser.getByteTimeDomainData(this.timeData);
             this.trackClipping();
@@ -267,7 +274,7 @@ class SeeingSound {
         //    spectrum is repeated, which keeps the timing exact).
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
         const bins = this.analyser.frequencyBinCount;
-        const pos = (this.audioContext.currentTime - this._t0) * COLUMN_RATE; // in columns, fractional
+        const pos = (performance.now() / 1000 - this._t0) * COLUMN_RATE; // in columns, fractional
         let due = Math.floor(pos) + 1 - this._writeCount;
         if (due > this.texWidth) {                     // e.g. tab was hidden: skip ahead
             this._writeCount += due - this.texWidth;
@@ -311,34 +318,15 @@ class SeeingSound {
         }
     }
 
-    /**
-     * Upload one spectrum column into the history texture, after a per-bin
-     * envelope follower running on the audio clock (one step per column):
-     * fast attack, so sound appears the moment it starts; slower release, so
-     * it settles back instead of flickering. Replaces the AnalyserNode's own
-     * smoothing, which is symmetric and runs per animation frame.
-     */
+    /** Upload one spectrum column into the history texture. */
     writeColumn(col, bins) {
         const gl = this.gl;
-        if (!this._env || this._env.length !== bins) {
-            this._env = Float32Array.from(this.frequencyData.subarray(0, bins));
-            this._envBytes = new Uint8Array(bins);
-        }
         const hop = 1 / COLUMN_RATE;
-        const kA = 1 - Math.exp(-hop / ATTACK_SECONDS);
-        const rel = Math.max(this.settings.releaseMs, 1) / 1000;
-        const kR = 1 - Math.exp(-hop / rel);
-        const x = this.frequencyData, env = this._env, out = this._envBytes;
-        for (let i = 0; i < bins; i++) {
-            const e = env[i], v = x[i];
-            const n = e + (v > e ? kA : kR) * (v - e);
-            env[i] = n;
-            out[i] = n;   // Uint8Array assignment truncates + clamps
-        }
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, col, 0, 1, bins, gl.LUMINANCE, gl.UNSIGNED_BYTE, out);
+        const env = this.frequencyData;
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, col, 0, 1, bins, gl.LUMINANCE, gl.UNSIGNED_BYTE, env);
 
         // Reference level for ageing: the recent peak within the displayed
-        // band (instant rise, ~3 s fall). Fading is measured against it, so
+        // band (~0.5 s rise, ~3 s fall). Fading is measured against it, so
         // the loudest current sound lasts `persistence` seconds whatever the
         // input gain; a fixed full-scale reference made quiet voices vanish
         // within a few hundred ms, which looked like the image had stopped.
@@ -349,9 +337,11 @@ class SeeingSound {
         for (let i = i0; i < i1; i++) if (env[i] > peak) peak = env[i];
         const th = Math.max(this.settings.noiseThreshold / 100.0, MIN_THRESHOLD);
         const level = Math.max(0, (peak / 255 - th) / (1 - th));
-        const kPeak = 1 - Math.exp(-hop / PEAK_RELEASE_SECONDS);
-        const r = this._refLevel || 0;
-        this._refLevel = level > r ? level : r + kPeak * (level - r);
+        // Rise is smoothed too: an instant jump would make every older trace
+        // fade faster all at once (visible "pumping")
+        const r = this._refLevel == null ? level : this._refLevel;
+        const tau = level > r ? PEAK_RISE_SECONDS : PEAK_RELEASE_SECONDS;
+        this._refLevel = r + (1 - Math.exp(-hop / tau)) * (level - r);
     }
 
     /** Clear the history texture and restart the column clock (called on Start). */
@@ -360,10 +350,9 @@ class SeeingSound {
         if (!gl || !this.texture) return;
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, this.texWidth, this.texHeight, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, null);
-        this._t0 = this.audioContext ? this.audioContext.currentTime : 0;
+        this._t0 = performance.now() / 1000;
         this._writeCount = 0;
-        this._env = null;
-        this._refLevel = 0;
+        this._refLevel = null;
         this.writeHead = 0;
     }
 

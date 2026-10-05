@@ -189,11 +189,11 @@
             </div>
             <div class="field">
                 <span class="field-label">Over time</span>
-                <div class="field-row"><label for="releaseMs" class="field-sublabel">Release — how fast a bin settles</label><span class="mono" id="releaseMsValue">120 ms</span></div>
-                <input type="range" id="releaseMs" min="10" max="500" step="5" value="120" class="slider">
+                <div class="field-row"><label for="smoothingMs" class="field-sublabel">Smoothing — spectral time constant</label><span class="mono" id="smoothingMsValue">10 ms</span></div>
+                <input type="range" id="smoothingMs" min="0" max="150" step="1" value="10" class="slider">
                 <div class="field-row"><label for="trailLength" class="field-sublabel">Persistence — loudest recent sound fades in</label><span class="mono" id="trailLengthValue">2.0 s</span></div>
                 <input type="range" id="trailLength" min="0" max="1" step="0.01" value="0.5" class="slider">
-                <p class="panel-hint">Sound appears as soon as it starts. Each component then loses level at the same rate, so quiet parts vanish first.</p>
+                <p class="panel-hint">No screen masks: each component loses level at the same rate as it ages, so quiet parts vanish first.</p>
             </div>
             <div class="field" id="heightScale3dRow" style="display:none">
                 <div class="field-row"><label for="heightScale3d" class="field-label">3D height</label><span class="mono" id="heightScale3dValue">0.60</span></div>
