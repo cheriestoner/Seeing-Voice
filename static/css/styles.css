@@ -98,6 +98,43 @@ button { cursor: pointer; }
 .rail-btn span { font-size: 10.5px; font-weight: 600; letter-spacing: .02em; }
 .rail-btn:hover { background: var(--paper-2); color: var(--ink); }
 .rail-btn.is-active { background: var(--ink); color: var(--paper); }
+.rail-hide { margin-top: auto; color: var(--ink-3); }
+
+/* Whole sidebar (rail + panel) hidden */
+.rail { transition: margin-left .25s var(--ease); }
+.app.sidebar-hidden .rail { margin-left: calc(-1 * var(--rail-w)); }
+.app.sidebar-hidden .panel {
+    margin-left: calc(-1 * var(--panel-w));
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sidebar-show-btn {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 6;
+    height: 40px;
+    padding: 0 14px 0 12px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    background: rgba(250,250,247,.9);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    display: none;
+    align-items: center;
+    gap: 8px;
+}
+.sidebar-show-btn svg, .panel-collapse svg {
+    width: 16px; height: 16px;
+    fill: none; stroke: currentColor; stroke-width: 1.8;
+    stroke-linecap: round; stroke-linejoin: round;
+}
+.app.sidebar-hidden .sidebar-show-btn { display: flex; }
+.spectrogram-container.expanded .sidebar-show-btn { display: none; }
 
 /* ── Panel ─────────────────────────────────────────────────────────────── */
 
@@ -109,8 +146,26 @@ button { cursor: pointer; }
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
     transition: margin-left .25s var(--ease), opacity .2s;
 }
+.panel-collapse {
+    position: absolute;
+    top: 28px;
+    right: 16px;
+    z-index: 1;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ink-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.panel-collapse:hover { background: var(--paper-2); color: var(--ink); }
+.panel-section h2 { padding-right: 40px; }
 .app.panel-closed .panel {
     margin-left: calc(-1 * var(--panel-w));
     opacity: 0;

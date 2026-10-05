@@ -39,10 +39,18 @@
             <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
             <span>Presets</span>
         </button>
+
+        <button class="rail-btn rail-hide" id="sidebarHideBtn" aria-label="Hide sidebar" title="Hide sidebar (⌘B / Ctrl+B)">
+            <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9 4.5v15M15.5 10l-2 2 2 2"/></svg>
+            <span>Hide</span>
+        </button>
     </nav>
 
     <!-- ── Settings panel: exactly one section visible at a time ────────── -->
     <aside class="panel" id="settingsPanel">
+        <button class="panel-collapse" id="panelCollapseBtn" aria-label="Close panel" title="Close panel">
+            <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
 
         <section class="panel-section is-active" data-section="mapping">
             <h2>Mapping</h2>
@@ -237,6 +245,11 @@
     <main class="stage">
         <div class="spectrogram-container">
             <canvas id="spectrogramCanvas"></canvas>
+
+            <button class="sidebar-show-btn" id="sidebarShowBtn" aria-label="Show sidebar" title="Show sidebar (⌘B / Ctrl+B)">
+                <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9 4.5v15M13.5 10l2 2-2 2"/></svg>
+                <span>Settings</span>
+            </button>
 
             <div class="frequency-scale" aria-hidden="true">
                 <div class="scale-label"></div><div class="scale-label"></div><div class="scale-label"></div>

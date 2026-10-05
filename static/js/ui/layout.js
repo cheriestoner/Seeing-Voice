@@ -45,6 +45,33 @@ class LayoutMethods {
         const lastBtn = railButtons.find(b => b.dataset.panel === last);
         if (!small && lastBtn && !lastBtn.classList.contains('is-active')) lastBtn.click();
 
+        // Close-panel chevron (rail stays)
+        const collapseBtn = document.getElementById('panelCollapseBtn');
+        if (collapseBtn) collapseBtn.addEventListener('click', () => {
+            app.classList.add('panel-closed');
+            railButtons.forEach(b => { b.classList.remove('is-active'); b.setAttribute('aria-expanded', 'false'); });
+        });
+
+        // Hide / show the whole sidebar (rail + panel); remembered across reloads
+        const setSidebarHidden = (hidden) => {
+            app.classList.toggle('sidebar-hidden', hidden);
+            try { localStorage.setItem('seeing_sound_sidebar_hidden', hidden ? '1' : '0'); } catch (e) { /* ignore */ }
+        };
+        this.setSidebarHidden = setSidebarHidden;
+        const hideBtn = document.getElementById('sidebarHideBtn');
+        const showBtn = document.getElementById('sidebarShowBtn');
+        if (hideBtn) hideBtn.addEventListener('click', () => setSidebarHidden(true));
+        if (showBtn) showBtn.addEventListener('click', () => setSidebarHidden(false));
+        try { if (localStorage.getItem('seeing_sound_sidebar_hidden') === '1') setSidebarHidden(true); } catch (e) { /* ignore */ }
+
+        // Cmd/Ctrl+B toggles the sidebar (as in VS Code; ignored in participant view)
+        document.addEventListener('keydown', (e) => {
+            if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || (e.key || '').toLowerCase() !== 'b') return;
+            if (document.querySelector('.spectrogram-container.expanded')) return;
+            e.preventDefault();
+            setSidebarHidden(!app.classList.contains('sidebar-hidden'));
+        });
+
         // Keep the WebGL drawing buffer matched to the stage size (panel open/close, window resize)
         const container = document.querySelector('.spectrogram-container');
         if (window.ResizeObserver && container) {
