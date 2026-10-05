@@ -85,10 +85,10 @@ class ControlsMethods {
                 }
 
                 // Add animation class
-                e.currentTarget.classList.add('active');
-                setTimeout(() => {
-                    e.currentTarget.classList.remove('active');
-                }, 300);
+                // (capture the button: e.currentTarget is null once the handler returns)
+                const btn = e.currentTarget;
+                btn.classList.add('active');
+                setTimeout(() => btn.classList.remove('active'), 300);
 
                 this.settings.minFreq = preset.minFreq;
                 this.settings.maxFreq = preset.maxFreq;
