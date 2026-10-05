@@ -3,6 +3,7 @@
 
 const COLORMAP_NAMES = { reversed_greyscale: 'Ink', viridis: 'Viridis', experimental: 'Crossmodal', greyscale: 'Greyscale' };
 const GROUND_NAMES = { white: 'Paper', dark: 'Night', transparent: 'Clear' };
+const MAPPING_NAMES = { spec2d: '2D spectrogram', spec3d: '3D spectrogram', pitch: 'Pitch × k' };
 
 class LayoutMethods {
     initLayout() {
@@ -89,7 +90,46 @@ class LayoutMethods {
             panel.addEventListener('input', () => this.updateStatusSummary());
             panel.addEventListener('change', () => this.updateStatusSummary());
         }
+        this.setMapping(this.settings.mapping, { silent: true });
         this.updateStatusSummary();
+    }
+
+    /**
+     * Switch mapping: shows that mapping's own parameters in the Mapping panel,
+     * greys out shared controls it does not use (data-applies="…"), and sets
+     * the renderer's viewMode. opts.silent skips the summary refresh.
+     */
+    setMapping(mapping, opts = {}) {
+        if (mapping === 'spec3d' && !this._webgl3dOK) {
+            this.showNotification('3D spectrogram is not supported on this device.', 'error');
+            mapping = 'spec2d';
+        }
+        const s = this.settings;
+        s.mapping = mapping;
+        s.viewMode = mapping === 'spec3d' ? s.spec3dStyle : '2d';
+
+        const radio = document.querySelector(`input[name="mapping-radio"][value="${mapping}"]`);
+        if (radio) radio.checked = true;
+        document.querySelectorAll('.mapping-params').forEach(el => { el.hidden = el.dataset.for !== mapping; });
+        document.querySelectorAll('[data-applies]').forEach(el => {
+            const na = !el.dataset.applies.split(/\s+/).includes(mapping);
+            el.classList.toggle('is-na', na);
+            el.querySelectorAll('input').forEach(i => { i.disabled = na; });
+            let note = el.querySelector(':scope > .na-note');
+            if (na && !note) {
+                note = document.createElement('span');
+                note.className = 'na-note';
+                el.appendChild(note);
+            }
+            if (note) note.textContent = na ? `Not used by the ${MAPPING_NAMES[mapping]}` : '';
+            if (note && !na) note.remove();
+        });
+
+        const container = document.querySelector('.spectrogram-container');
+        if (container) container.classList.toggle('view-3d', mapping === 'spec3d');
+        this.updateSegmentedControlIndicators();
+        if (!opts.silent) this.updateStatusSummary();
+        requestAnimationFrame(() => this.updateLabelGutter && this.updateLabelGutter());
     }
 
     updateStatusSummary() {
@@ -100,13 +140,13 @@ class LayoutMethods {
         const strip = document.getElementById('statusStrip');
         if (!strip) return;
         const parts = [
+            MAPPING_NAMES[s.mapping] + (s.mapping === 'spec3d' ? ` (${s.spec3dStyle})` : ''),
             `FFT ${s.fftSize}`,
             `${s.scale === 'log' ? 'Log' : 'Lin'} ${s.minFreq}–${s.maxFreq} Hz`,
             `${s.minDb}…${s.maxDb} dB`,
             `${COLORMAP_NAMES[s.colormap] || s.colormap} on ${GROUND_NAMES[s.backgroundStyle] || s.backgroundStyle}`,
             `${s.scrollSpeed} ${s.scrollDirection === 'right' ? '→' : '←'}`,
             `smooth ${s.smoothingMs} ms · persist ${persistenceSeconds(s.trailLength).toFixed(1)} s`,
-            s.viewMode === '2d' ? '2D' : `3D ${s.viewMode}`,
         ];
         if (s.noiseThreshold > 0) parts.push(`threshold ${s.noiseThreshold}%`);
         if (this._activePresetName) parts.push(`preset “${this._activePresetName}”`);

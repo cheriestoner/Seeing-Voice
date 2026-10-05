@@ -44,7 +44,9 @@ class SeeingSound {
             trailLength: 0.5,    // persistence, see persistenceSeconds() (0.5 = 2 s)
             smoothingMs: 10,     // spectral smoothing time constant (≈ the old 0.2 per frame at 60 Hz)
             boostIntensity: 2.5, // flash brightness at cursor edge (0 = off)
-            viewMode: '2d',      // '2d' | 'surface' | 'wireframe'
+            mapping: 'spec2d',   // 'spec2d' | 'spec3d' | 'pitch'
+            spec3dStyle: 'surface', // 'surface' | 'wireframe'
+            viewMode: '2d',      // derived from mapping + spec3dStyle (used by the renderers)
             heightScale3d: 0.6   // vertical exaggeration for the 3D surface
         };
 

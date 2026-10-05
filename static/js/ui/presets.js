@@ -29,12 +29,16 @@ class PresetsMethods {
         Object.assign(this.settings, s);
 
         // Defaults for presets saved before these fields existed
-        if (!this.settings.viewMode) this.settings.viewMode = '2d';
+        // Presets from before 'mapping' existed stored only viewMode
+        if (!s.mapping) {
+            const vm = s.viewMode || '2d';
+            this.settings.mapping = vm === '2d' ? 'spec2d' : 'spec3d';
+            this.settings.spec3dStyle = vm === '2d' ? (this.settings.spec3dStyle || 'surface') : vm;
+        }
         if (this.settings.heightScale3d == null) this.settings.heightScale3d = 0.6;
         if (s.minDb == null) this.settings.minDb = -100;
         if (s.smoothingMs == null) this.settings.smoothingMs = 10;
         if (s.maxDb == null) this.settings.maxDb = -30;
-        if (this.settings.viewMode !== '2d' && !this._webgl3dOK) this.settings.viewMode = '2d';
 
         const setRadio = (name, value) => {
             const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
@@ -47,12 +51,8 @@ class PresetsMethods {
         setRadio('speed-radio', s.scrollSpeed);
         setRadio('direction-radio', s.scrollDirection);
         setRadio('background-radio', s.backgroundStyle);
-        setRadio('view-radio', this.settings.viewMode);
-
-        const is3d = this.settings.viewMode !== '2d';
-        document.querySelector('.spectrogram-container').classList.toggle('view-3d', is3d);
-        const heightRow = document.getElementById('heightScale3dRow');
-        if (heightRow) heightRow.style.display = is3d ? '' : 'none';
+        setRadio('style3d-radio', this.settings.spec3dStyle);
+        this.setMapping(this.settings.mapping, { silent: true });
         document.getElementById('heightScale3d').value = this.settings.heightScale3d;
         document.getElementById('heightScale3dValue').textContent = this.settings.heightScale3d.toFixed(2);
 

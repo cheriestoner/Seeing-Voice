@@ -209,23 +209,14 @@ class ControlsMethods {
             this.settings.softEdge = e.target.checked;
         });
 
-        // View mode: 2D / 3D surface / 3D wireframe
-        const spectrogramContainerEl = document.querySelector('.spectrogram-container');
-        const heightRow = document.getElementById('heightScale3dRow');
-        document.querySelectorAll('input[name="view-radio"]').forEach(radio => {
+        // Mapping (2D / 3D spectrogram / …) and the 3D style
+        document.querySelectorAll('input[name="mapping-radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => this.setMapping(e.target.value));
+        });
+        document.querySelectorAll('input[name="style3d-radio"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
-                const mode = e.target.value;
-                if (mode !== '2d' && !this._webgl3dOK) {
-                    this.showNotification('3D view is not supported on this device.', 'error');
-                    document.querySelector('input[name="view-radio"][value="2d"]').checked = true;
-                    this.updateSegmentedControlIndicators();
-                    return;
-                }
-                this.settings.viewMode = mode;
-                const is3d = mode !== '2d';
-                spectrogramContainerEl.classList.toggle('view-3d', is3d);
-                if (heightRow) heightRow.style.display = is3d ? '' : 'none';
-                this.updateSegmentedControlIndicators();
+                this.settings.spec3dStyle = e.target.value;
+                this.setMapping(this.settings.mapping);
             });
         });
 
@@ -349,7 +340,7 @@ class ControlsMethods {
         update('direction-radio', this.settings.scrollDirection);
         update('scale-radio', this.settings.scale);
         update('background-radio', this.settings.backgroundStyle);
-        update('view-radio', this.settings.viewMode);
+        update('style3d-radio', this.settings.spec3dStyle);
 
         if (this.updateStatusSummary) this.updateStatusSummary();
     }

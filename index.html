@@ -27,13 +27,13 @@
             <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-.9 2-1.8 0-1-.9-1.6-.2-2.6.8-1 2.6-.4 4-1.1 1.6-.8 2.2-2.4 2.2-3.9A8.4 8.4 0 0 0 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="11" cy="7.5" r="1"/><circle cx="15.5" cy="8.5" r="1"/></svg>
             <span>Colour</span>
         </button>
-        <button class="rail-btn" data-panel="motion" aria-label="Motion and time" title="Motion &amp; time">
-            <svg viewBox="0 0 24 24"><path d="M4 12h14M14 7l5 5-5 5"/></svg>
-            <span>Motion</span>
+        <button class="rail-btn" data-panel="time" aria-label="Time" title="Time">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+            <span>Time</span>
         </button>
-        <button class="rail-btn" data-panel="detail" aria-label="Analysis detail" title="Analysis detail">
+        <button class="rail-btn" data-panel="signal" aria-label="Signal analysis" title="Signal analysis">
             <svg viewBox="0 0 24 24"><path d="M4 18V9M9 18V5M14 18v-7M19 18V8"/></svg>
-            <span>Detail</span>
+            <span>Signal</span>
         </button>
         <button class="rail-btn" data-panel="presets" aria-label="Presets" title="Presets">
             <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
@@ -54,12 +54,16 @@
 
         <section class="panel-section is-active" data-section="mapping">
             <h2>Mapping</h2>
-            <p class="panel-hint">What the voice is turned into.</p>
+            <p class="panel-hint">What the voice is turned into. Signal, frequency, colour and time settings are shared by all mappings.</p>
             <fieldset class="field">
                 <legend>Drawn on the canvas</legend>
                 <label class="choice">
-                    <input type="radio" name="mapping-radio" value="spectrogram" checked>
-                    <span>Spectrogram</span>
+                    <input type="radio" name="mapping-radio" value="spec2d" checked>
+                    <span>2D spectrogram</span>
+                </label>
+                <label class="choice">
+                    <input type="radio" name="mapping-radio" value="spec3d">
+                    <span>3D spectrogram</span>
                 </label>
                 <label class="choice is-disabled">
                     <input type="radio" name="mapping-radio" value="pitch" disabled>
@@ -67,6 +71,39 @@
                     <em>next</em>
                 </label>
             </fieldset>
+
+            <div class="mapping-params" data-for="spec2d">
+                <span class="mapping-params-title">2D spectrogram</span>
+            <div class="field">
+                <span class="field-label">Scroll direction</span>
+                <div class="segmented-control" style="--sc-count: 2">
+                    <input type="radio" name="direction-radio" id="direction-left" value="left" checked>
+                    <label for="direction-left">← Leftward</label>
+                    <input type="radio" name="direction-radio" id="direction-right" value="right">
+                    <label for="direction-right">Rightward →</label>
+                    <span class="selection-indicator"></span>
+                </div>
+            </div>
+            </div>
+
+            <div class="mapping-params" data-for="spec3d" hidden>
+                <span class="mapping-params-title">3D spectrogram</span>
+            <div class="field">
+                <span class="field-label">Style</span>
+                <div class="segmented-control" style="--sc-count: 2">
+                    <input type="radio" name="style3d-radio" id="style3d-surface" value="surface" checked>
+                    <label for="style3d-surface">Surface</label>
+                    <input type="radio" name="style3d-radio" id="style3d-wireframe" value="wireframe">
+                    <label for="style3d-wireframe">Wireframe</label>
+                    <span class="selection-indicator"></span>
+                </div>
+                <p class="panel-hint">Drag on the canvas to orbit, scroll to zoom.</p>
+            </div>
+            <div class="field" id="heightScale3dRow">
+                <div class="field-row"><label for="heightScale3d" class="field-label">Height</label><span class="mono" id="heightScale3dValue">0.60</span></div>
+                <input type="range" id="heightScale3d" min="0.1" max="1.5" step="0.05" value="0.6" class="slider">
+            </div>
+            </div>
         </section>
 
         <section class="panel-section" data-section="frequency">
@@ -139,21 +176,22 @@
                     <label for="bg-transparent">Clear</label>
                     <span class="selection-indicator"></span>
                 </div>
-                <label class="toggle" id="softEdgeOption" style="display:none">
+                <label class="toggle" id="softEdgeOption" data-applies="spec2d" style="display:none">
                     <span>Soft edges</span>
                     <input type="checkbox" id="softEdgeCheck" checked>
                 </label>
             </div>
-            <div class="field">
+            <div class="field" data-applies="spec2d">
                 <div class="field-row"><label for="boostIntensity" class="field-label">Onset flash</label><span class="mono" id="boostIntensityValue">2.5</span></div>
                 <input type="range" id="boostIntensity" min="0" max="5" step="0.1" value="2.5" class="slider">
             </div>
         </section>
 
-        <section class="panel-section" data-section="motion">
-            <h2>Motion &amp; time</h2>
+
+        <section class="panel-section" data-section="time">
+            <h2>Time</h2>
             <div class="field">
-                <span class="field-label">Scroll speed</span>
+                <span class="field-label">Speed</span>
                 <div class="segmented-control" style="--sc-count: 3">
                     <input type="radio" name="speed-radio" id="speed-slow" value="slow">
                     <label for="speed-slow">Slow</label>
@@ -163,46 +201,17 @@
                     <label for="speed-fast">Fast</label>
                     <span class="selection-indicator"></span>
                 </div>
+                <p class="panel-hint">How much space one second takes: across the screen in 2D, in depth in 3D.</p>
             </div>
             <div class="field">
-                <span class="field-label">Direction</span>
-                <div class="segmented-control" style="--sc-count: 2">
-                    <input type="radio" name="direction-radio" id="direction-left" value="left" checked>
-                    <label for="direction-left">← Leftward</label>
-                    <input type="radio" name="direction-radio" id="direction-right" value="right">
-                    <label for="direction-right">Rightward →</label>
-                    <span class="selection-indicator"></span>
-                </div>
-            </div>
-            <div class="field">
-                <span class="field-label">View</span>
-                <div class="segmented-control" style="--sc-count: 3">
-                    <input type="radio" name="view-radio" id="view-2d" value="2d" checked>
-                    <label for="view-2d">2D</label>
-                    <input type="radio" name="view-radio" id="view-surface" value="surface">
-                    <label for="view-surface">Surface</label>
-                    <input type="radio" name="view-radio" id="view-wireframe" value="wireframe">
-                    <label for="view-wireframe">Wireframe</label>
-                    <span class="selection-indicator"></span>
-                </div>
-                <p class="panel-hint">3D views: drag to orbit, scroll to zoom.</p>
-            </div>
-            <div class="field">
-                <span class="field-label">Over time</span>
-                <div class="field-row"><label for="smoothingMs" class="field-sublabel">Smoothing — spectral time constant</label><span class="mono" id="smoothingMsValue">10 ms</span></div>
-                <input type="range" id="smoothingMs" min="0" max="150" step="1" value="10" class="slider">
-                <div class="field-row"><label for="trailLength" class="field-sublabel">Persistence — loudest recent sound fades in</label><span class="mono" id="trailLengthValue">2.0 s</span></div>
+                <div class="field-row"><label for="trailLength" class="field-label">Persistence</label><span class="mono" id="trailLengthValue">2.0 s</span></div>
                 <input type="range" id="trailLength" min="0" max="1" step="0.01" value="0.5" class="slider">
-                <p class="panel-hint">No screen masks: each component loses level at the same rate as it ages, so quiet parts vanish first.</p>
-            </div>
-            <div class="field" id="heightScale3dRow" style="display:none">
-                <div class="field-row"><label for="heightScale3d" class="field-label">3D height</label><span class="mono" id="heightScale3dValue">0.60</span></div>
-                <input type="range" id="heightScale3d" min="0.1" max="1.5" step="0.05" value="0.6" class="slider">
+                <p class="panel-hint">Time for the loudest recent sound to fade out. Every component loses level at the same rate, so quiet parts vanish first.</p>
             </div>
         </section>
 
-        <section class="panel-section" data-section="detail">
-            <h2>Analysis detail</h2>
+        <section class="panel-section" data-section="signal">
+            <h2>Signal analysis</h2>
             <div class="field">
                 <span class="field-label">FFT size</span>
                 <div class="segmented-control" style="--sc-count: 3">
@@ -228,6 +237,11 @@
             <div class="field">
                 <div class="field-row"><label for="noiseThreshold" class="field-label">Noise threshold</label><span class="mono" id="noiseThresholdValue">0%</span></div>
                 <input type="range" id="noiseThreshold" min="0" max="100" value="0" class="slider">
+            </div>
+            <div class="field">
+                <div class="field-row"><label for="smoothingMs" class="field-label">Smoothing</label><span class="mono" id="smoothingMsValue">10 ms</span></div>
+                <input type="range" id="smoothingMs" min="0" max="150" step="1" value="10" class="slider">
+                <p class="panel-hint">Spectral time constant, independent of the screen refresh rate.</p>
             </div>
         </section>
 
