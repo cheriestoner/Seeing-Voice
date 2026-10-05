@@ -113,17 +113,6 @@
                 </div>
                 <p class="panel-hint">Front: newest sound nearest, history recedes. Drag on the canvas to orbit, scroll to zoom; pick a preset again to reset.</p>
             </div>
-            <div class="field">
-                <span class="field-label">Fade</span>
-                <div class="segmented-control" style="--sc-count: 2">
-                    <input type="radio" name="fade3d-radio" id="fade3d-distance" value="distance" checked>
-                    <label for="fade3d-distance">By distance</label>
-                    <input type="radio" name="fade3d-radio" id="fade3d-persistence" value="persistence">
-                    <label for="fade3d-persistence">Persistence</label>
-                    <span class="selection-indicator"></span>
-                </div>
-                <p class="panel-hint">By distance: only the far end darkens. Persistence: same level-based ageing as 2D (Time panel). Either way only colour fades — the shape keeps its height.</p>
-            </div>
             <label class="toggle" id="lighting3dRow">
                 <span>Surface lighting</span>
                 <input type="checkbox" id="lighting3dCheck">
@@ -231,6 +220,17 @@
                     <span class="selection-indicator"></span>
                 </div>
                 <p class="panel-hint">How much space one second takes: across the screen in 2D, in depth in 3D.</p>
+            </div>
+            <div class="field" id="fade3dRow">
+                <span class="field-label">Fade (3D)</span>
+                <div class="segmented-control" style="--sc-count: 2">
+                    <input type="radio" name="fade3d-radio" id="fade3d-distance" value="distance" checked>
+                    <label for="fade3d-distance">By distance</label>
+                    <input type="radio" name="fade3d-radio" id="fade3d-persistence" value="persistence">
+                    <label for="fade3d-persistence">Persistence</label>
+                    <span class="selection-indicator"></span>
+                </div>
+                <p class="panel-hint">By distance: only the far end of the terrain darkens. Persistence: the same level-based ageing as 2D, set below. In 3D only the colour fades — the shape keeps its height.</p>
             </div>
             <div class="field" data-applies="spec2d spec3d-persistence pitch">
                 <div class="field-row"><label for="trailLength" class="field-label">Persistence</label><span class="mono" id="trailLengthValue">2.0 s</span></div>

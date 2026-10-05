@@ -124,12 +124,15 @@ class LayoutMethods {
             if (na) {
                 if (!note) { note = document.createElement('span'); note.className = 'na-note'; el.appendChild(note); }
                 note.textContent = mapping === 'spec3d' && applies.some(a => a.startsWith('spec3d'))
-                    ? 'Not used while the 3D fade is “by distance”'
+                    ? 'Not used while Fade (3D) is “By distance” — switch it above'
                     : `Not used by the ${MAPPING_NAMES[mapping]}`;
             } else if (note) {
                 note.remove();
             }
         });
+
+        const fadeRow = document.getElementById('fade3dRow');
+        if (fadeRow) fadeRow.hidden = mapping !== 'spec3d';
 
         const lightRow = document.getElementById('lighting3dRow');
         if (lightRow) lightRow.hidden = s.spec3dStyle !== 'surface';
