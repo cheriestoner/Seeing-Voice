@@ -111,19 +111,28 @@ class LayoutMethods {
         const radio = document.querySelector(`input[name="mapping-radio"][value="${mapping}"]`);
         if (radio) radio.checked = true;
         document.querySelectorAll('.mapping-params').forEach(el => { el.hidden = el.dataset.for !== mapping; });
+        // data-applies lists where a shared control is used: a mapping id, or a
+        // finer key such as 'spec3d-persistence' (3D with persistence fading)
+        const keys = [mapping];
+        if (mapping === 'spec3d') keys.push(`spec3d-${s.spec3dFade}`);
         document.querySelectorAll('[data-applies]').forEach(el => {
-            const na = !el.dataset.applies.split(/\s+/).includes(mapping);
+            const applies = el.dataset.applies.split(/\s+/);
+            const na = !applies.some(a => keys.includes(a));
             el.classList.toggle('is-na', na);
             el.querySelectorAll('input').forEach(i => { i.disabled = na; });
             let note = el.querySelector(':scope > .na-note');
-            if (na && !note) {
-                note = document.createElement('span');
-                note.className = 'na-note';
-                el.appendChild(note);
+            if (na) {
+                if (!note) { note = document.createElement('span'); note.className = 'na-note'; el.appendChild(note); }
+                note.textContent = mapping === 'spec3d' && applies.some(a => a.startsWith('spec3d'))
+                    ? 'Not used while the 3D fade is “by distance”'
+                    : `Not used by the ${MAPPING_NAMES[mapping]}`;
+            } else if (note) {
+                note.remove();
             }
-            if (note) note.textContent = na ? `Not used by the ${MAPPING_NAMES[mapping]}` : '';
-            if (note && !na) note.remove();
         });
+
+        const lightRow = document.getElementById('lighting3dRow');
+        if (lightRow) lightRow.hidden = s.spec3dStyle !== 'surface';
 
         const container = document.querySelector('.spectrogram-container');
         if (container) container.classList.toggle('view-3d', mapping === 'spec3d');
@@ -140,7 +149,7 @@ class LayoutMethods {
         const strip = document.getElementById('statusStrip');
         if (!strip) return;
         const parts = [
-            MAPPING_NAMES[s.mapping] + (s.mapping === 'spec3d' ? ` (${s.spec3dStyle})` : ''),
+            MAPPING_NAMES[s.mapping] + (s.mapping === 'spec3d' ? ` (${s.spec3dStyle}, ${s.spec3dCamera}, fade ${s.spec3dFade})` : ''),
             `FFT ${s.fftSize}`,
             `${s.scale === 'log' ? 'Log' : 'Lin'} ${s.minFreq}–${s.maxFreq} Hz`,
             `${s.minDb}…${s.maxDb} dB`,

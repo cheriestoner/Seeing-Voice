@@ -46,6 +46,9 @@ class SeeingSound {
             boostIntensity: 2.5, // flash brightness at cursor edge (0 = off)
             mapping: 'spec2d',   // 'spec2d' | 'spec3d' | 'pitch'
             spec3dStyle: 'surface', // 'surface' | 'wireframe'
+            spec3dCamera: 'front',  // see CAMERA_PRESETS_3D
+            spec3dFade: 'distance', // 'distance' (fade the far end) | 'persistence' (shared level ageing)
+            spec3dLighting: false,  // shading on the surface style
             viewMode: '2d',      // derived from mapping + spec3dStyle (used by the renderers)
             heightScale3d: 0.6   // vertical exaggeration for the 3D surface
         };
@@ -54,7 +57,7 @@ class SeeingSound {
         this._activePresetName = null;
 
         // 3D orbit camera + reusable matrices
-        this._cam = { az: -0.6, el: 0.42, dist: 2.3 }; // azimuth, elevation (rad), distance
+        this._cam = { az: Math.PI / 2, el: 0.42, dist: 3.3, target: [-0.3, 0.0, 0] }; // = CAMERA_PRESETS_3D.front
         this._proj = new Float32Array(16);
         this._view = new Float32Array(16);
         this._mvp = new Float32Array(16);

@@ -5,6 +5,16 @@
 const GRID_COLS = 220;
 const GRID_ROWS = 140;
 
+// Camera presets (orbit around `target`; az 0 = looking along −z, +π/2 = looking from the newest edge)
+const CAMERA_PRESETS_3D = {
+    // Chrome Music Lab–like: low, from the newest edge, history recedes into the distance
+    front:   { az:  Math.PI / 2, el: 0.42, dist: 3.3,  target: [-0.3, 0.0, 0] },
+    // Waterfall: time runs left → right like the 2D view, frequency goes into depth
+    side:    { az: 0,            el: 0.75, dist: 2.9,  target: [0, 0.0, 0] },
+    oblique: { az:  0.75,        el: 0.50, dist: 2.7,  target: [0, 0.1, 0] },
+    top:     { az: 0,            el: 1.45, dist: 2.6,  target: [0, 0, 0] },
+};
+
 class Spectrogram3DMethods {
     /**
      * Build the second WebGL program that renders the history texture as a
@@ -31,12 +41,14 @@ class Spectrogram3DMethods {
             uniform float u_visible_seconds;
             uniform float u_persistence;
             uniform float u_ref_level;     // recent peak level the fade is measured against
+            uniform int u_fade_mode;       // 0 = persistence (level ageing, shared with 2D), 1 = distance
             uniform int u_scale_mode;
             uniform mat4 u_mvp;
             uniform float u_height_scale;
             uniform int u_lighting;
             varying float v_amp;
             varying float v_freq;
+            varying float v_time;          // 1 = newest edge, 0 = oldest
             varying vec3 v_normal;
 
             ${FREQ_GLSL}
@@ -63,11 +75,14 @@ class Spectrogram3DMethods {
 
             void main() {
                 float h = heightAt(a_grid);
-                v_amp = agedAmp(a_grid);
+                v_amp = u_fade_mode == 1 ? sampleAmp(a_grid) : agedAmp(a_grid);
                 v_freq = a_grid.y;
+                v_time = a_grid.x;
 
-                // Plane: x = time [-1,1], z = frequency [-1,1], y = amplitude
-                vec3 pos = vec3(a_grid.x * 2.0 - 1.0, h, a_grid.y * 2.0 - 1.0);
+                // Plane: x = time [-1 old, +1 new], y = amplitude,
+                // z = frequency [+1 low, -1 high] so that, seen from the newest
+                // edge (Front camera), low frequencies are on the left
+                vec3 pos = vec3(a_grid.x * 2.0 - 1.0, h, 1.0 - a_grid.y * 2.0);
 
                 if (u_lighting == 1) {
                     float du = 1.0 / float(${GRID_COLS});
@@ -78,7 +93,7 @@ class Spectrogram3DMethods {
                     float hU = heightAt(a_grid + vec2(0.0,  dv));
                     float sx = (hR - hL) / (4.0 * du);   // world dx per grid step = 2*du
                     float sz = (hU - hD) / (4.0 * dv);
-                    v_normal = normalize(vec3(-sx, 1.0, -sz));
+                    v_normal = normalize(vec3(-sx, 1.0, sz));   // z is flipped
                 } else {
                     v_normal = vec3(0.0, 1.0, 0.0);
                 }
@@ -93,8 +108,11 @@ class Spectrogram3DMethods {
             uniform float u_threshold;
             uniform int u_colormap;
             uniform int u_lighting;
+            uniform int u_fade_mode;
+            uniform vec3 u_ground;
             varying float v_amp;
             varying float v_freq;
+            varying float v_time;
             varying vec3 v_normal;
 
             ${COLORMAP_GLSL}
@@ -102,9 +120,15 @@ class Spectrogram3DMethods {
             void main() {
                 vec3 color = getColor(v_freq, v_amp);
                 if (u_lighting == 1) {
-                    vec3 L = normalize(vec3(0.4, 0.85, 0.45));
+                    vec3 L = normalize(vec3(0.45, 0.85, -0.3));
                     float diff = max(dot(normalize(v_normal), L), 0.0);
                     color *= (0.4 + 0.6 * diff);
+                }
+                if (u_fade_mode == 1) {
+                    // Distance fade: ~full brightness over most of the history,
+                    // falling off only toward the far end. Shape is untouched.
+                    float fade = pow(max(cos((1.0 - v_time) * 1.5707963), 0.0), 0.5);
+                    color = mix(u_ground, color, fade);
                 }
                 gl_FragColor = vec4(color, 1.0);
             }
@@ -184,8 +208,7 @@ class Spectrogram3DMethods {
 
         // Orbit camera → MVP (aspect read every frame, so resize/fullscreen just works)
         const aspect = (this.canvas.width / this.canvas.height) || 1;
-        const { az, el, dist } = this._cam;
-        const target = [0, 0.2, 0];
+        const { az, el, dist, target } = this._cam;
         const eye = [
             target[0] + dist * Math.cos(el) * Math.sin(az),
             target[1] + dist * Math.sin(el),
@@ -215,7 +238,10 @@ class Spectrogram3DMethods {
         gl.uniform1i(gl.getUniformLocation(p, 'u_colormap'), s.colormapMode);
         gl.uniformMatrix4fv(gl.getUniformLocation(p, 'u_mvp'), false, this._mvp);
         gl.uniform1f(gl.getUniformLocation(p, 'u_height_scale'), this.settings.heightScale3d);
-        gl.uniform1i(gl.getUniformLocation(p, 'u_lighting'), this.settings.viewMode === 'surface' ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(p, 'u_lighting'), (this.settings.viewMode === 'surface' && this.settings.spec3dLighting) ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(p, 'u_fade_mode'), this.settings.spec3dFade === 'distance' ? 1 : 0);
+        const ground = bg === 'white' ? [1, 1, 1] : [0.027, 0.027, 0.067];
+        gl.uniform3f(gl.getUniformLocation(p, 'u_ground'), ground[0], ground[1], ground[2]);
 
         if (this.settings.viewMode === 'wireframe') {
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.lineIndexBuffer);
@@ -224,6 +250,13 @@ class Spectrogram3DMethods {
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.triIndexBuffer);
             gl.drawElements(gl.TRIANGLES, this.triIndexCount, gl.UNSIGNED_SHORT, 0);
         }
+    }
+
+    /** Move the orbit camera to a named preset (CAMERA_PRESETS_3D). */
+    applyCameraPreset(name) {
+        const c = CAMERA_PRESETS_3D[name] || CAMERA_PRESETS_3D.front;
+        this._cam = { az: c.az, el: c.el, dist: c.dist, target: c.target.slice() };
+        this.settings.spec3dCamera = name;
     }
 }
 

@@ -97,8 +97,37 @@
                     <label for="style3d-wireframe">Wireframe</label>
                     <span class="selection-indicator"></span>
                 </div>
-                <p class="panel-hint">Drag on the canvas to orbit, scroll to zoom.</p>
             </div>
+            <div class="field">
+                <span class="field-label">Camera</span>
+                <div class="segmented-control" style="--sc-count: 4">
+                    <input type="radio" name="camera3d-radio" id="cam3d-front" value="front" checked>
+                    <label for="cam3d-front">Front</label>
+                    <input type="radio" name="camera3d-radio" id="cam3d-side" value="side">
+                    <label for="cam3d-side">Side</label>
+                    <input type="radio" name="camera3d-radio" id="cam3d-oblique" value="oblique">
+                    <label for="cam3d-oblique">Oblique</label>
+                    <input type="radio" name="camera3d-radio" id="cam3d-top" value="top">
+                    <label for="cam3d-top">Top</label>
+                    <span class="selection-indicator"></span>
+                </div>
+                <p class="panel-hint">Front: newest sound nearest, history recedes. Drag on the canvas to orbit, scroll to zoom; pick a preset again to reset.</p>
+            </div>
+            <div class="field">
+                <span class="field-label">Fade</span>
+                <div class="segmented-control" style="--sc-count: 2">
+                    <input type="radio" name="fade3d-radio" id="fade3d-distance" value="distance" checked>
+                    <label for="fade3d-distance">By distance</label>
+                    <input type="radio" name="fade3d-radio" id="fade3d-persistence" value="persistence">
+                    <label for="fade3d-persistence">Persistence</label>
+                    <span class="selection-indicator"></span>
+                </div>
+                <p class="panel-hint">By distance: only the far end darkens. Persistence: same level-based ageing as 2D (Time panel). Either way only colour fades — the shape keeps its height.</p>
+            </div>
+            <label class="toggle" id="lighting3dRow">
+                <span>Surface lighting</span>
+                <input type="checkbox" id="lighting3dCheck">
+            </label>
             <div class="field" id="heightScale3dRow">
                 <div class="field-row"><label for="heightScale3d" class="field-label">Height</label><span class="mono" id="heightScale3dValue">0.60</span></div>
                 <input type="range" id="heightScale3d" min="0.1" max="1.5" step="0.05" value="0.6" class="slider">
@@ -203,7 +232,7 @@
                 </div>
                 <p class="panel-hint">How much space one second takes: across the screen in 2D, in depth in 3D.</p>
             </div>
-            <div class="field">
+            <div class="field" data-applies="spec2d spec3d-persistence pitch">
                 <div class="field-row"><label for="trailLength" class="field-label">Persistence</label><span class="mono" id="trailLengthValue">2.0 s</span></div>
                 <input type="range" id="trailLength" min="0" max="1" step="0.01" value="0.5" class="slider">
                 <p class="panel-hint">Time for the loudest recent sound to fade out. Every component loses level at the same rate, so quiet parts vanish first.</p>

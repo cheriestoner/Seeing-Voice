@@ -51,7 +51,14 @@ class PresetsMethods {
         setRadio('speed-radio', s.scrollSpeed);
         setRadio('direction-radio', s.scrollDirection);
         setRadio('background-radio', s.backgroundStyle);
+        if (!s.spec3dCamera) this.settings.spec3dCamera = 'front';
+        if (!s.spec3dFade) this.settings.spec3dFade = 'distance';
+        if (s.spec3dLighting == null) this.settings.spec3dLighting = false;
         setRadio('style3d-radio', this.settings.spec3dStyle);
+        setRadio('camera3d-radio', this.settings.spec3dCamera);
+        setRadio('fade3d-radio', this.settings.spec3dFade);
+        document.getElementById('lighting3dCheck').checked = this.settings.spec3dLighting;
+        this.applyCameraPreset(this.settings.spec3dCamera);
         this.setMapping(this.settings.mapping, { silent: true });
         document.getElementById('heightScale3d').value = this.settings.heightScale3d;
         document.getElementById('heightScale3dValue').textContent = this.settings.heightScale3d.toFixed(2);

@@ -213,6 +213,20 @@ class ControlsMethods {
         document.querySelectorAll('input[name="mapping-radio"]').forEach(radio => {
             radio.addEventListener('change', (e) => this.setMapping(e.target.value));
         });
+        document.querySelectorAll('input[name="camera3d-radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => { this.applyCameraPreset(e.target.value); this.updateSegmentedControlIndicators(); });
+            // clicking the already-selected preset resets a dragged camera
+            radio.nextElementSibling.addEventListener('click', () => { if (radio.checked) this.applyCameraPreset(radio.value); });
+        });
+        document.querySelectorAll('input[name="fade3d-radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.settings.spec3dFade = e.target.value;
+                this.setMapping(this.settings.mapping);
+            });
+        });
+        document.getElementById('lighting3dCheck').addEventListener('change', (e) => {
+            this.settings.spec3dLighting = e.target.checked;
+        });
         document.querySelectorAll('input[name="style3d-radio"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
                 this.settings.spec3dStyle = e.target.value;
@@ -341,6 +355,8 @@ class ControlsMethods {
         update('scale-radio', this.settings.scale);
         update('background-radio', this.settings.backgroundStyle);
         update('style3d-radio', this.settings.spec3dStyle);
+        update('camera3d-radio', this.settings.spec3dCamera);
+        update('fade3d-radio', this.settings.spec3dFade);
 
         if (this.updateStatusSummary) this.updateStatusSummary();
     }
