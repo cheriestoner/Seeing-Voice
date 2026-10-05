@@ -392,6 +392,8 @@ class SeeingSound {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, this.texWidth, this.texHeight, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, null);
         
         this.writeHead = 0;
+        this._writeCount = 0;          // monotonic (never wraps) — index of the next column to write
+        this._visualOffsetTexels = 0;  // monotonic float driving the on-screen scroll position
 
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -1343,13 +1345,32 @@ class SeeingSound {
         const bins = this.analyser.frequencyBinCount;
         gl.texSubImage2D(gl.TEXTURE_2D, 0, this.writeHead, 0, 1, bins, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.frequencyData);
 
-        // 2. Shared uniform inputs (used by both the 2D and 3D draw paths)
+        // 2. Visual scroll offset: data still arrives exactly one column per
+        // frame (unchanged, above), but the ON-SCREEN scroll position is
+        // driven by its own accumulator with a slow, naturally-varying speed
+        // instead of a metronome-perfect +1 texel every single frame. A
+        // constant, frame-locked advance reads as machine-clocked motion,
+        // since real sound has no such perfectly regular time base. A gentle
+        // pull-back term keeps this from drifting away from the actual write
+        // position over time, so it stays visually in sync with the data.
+        const nowSec = performance.now() / 1000;
+        const speedNoise = this._organicNoise(nowSec, 0.4); // slow ~0.4s wiggle, range [-1, 1]
+        const speedMul = 1.0 + speedNoise * 0.08;           // +/-8% speed variation
+        const drift = this._writeCount - this._visualOffsetTexels;
+        this._visualOffsetTexels += speedMul + drift * 0.02; // small correction keeps it synced
+        this._writeCount += 1;
+        this.writeHead = this._writeCount % this.texWidth;
+
+        let visualOffsetNorm = (this._visualOffsetTexels % this.texWidth) / this.texWidth;
+        if (visualOffsetNorm < 0) visualOffsetNorm += 1;
+
+        // 3. Shared uniform inputs (used by both the 2D and 3D draw paths)
         const nyquist = this.settings.sampleRate / 2;
         const heightScale = bins / this.texHeight;   // portion of the texture in use
         const scrollSpeed = SCROLL_SPEEDS[this.settings.scrollSpeed];
         const canvasWidth = this.canvas.width / window.devicePixelRatio;
         const shared = {
-            offset: this.writeHead / this.texWidth,
+            offset: visualOffsetNorm,
             minRatio: (this.settings.minFreq / nyquist) * heightScale,
             maxRatio: (this.settings.maxFreq / nyquist) * heightScale,
             threshold: Math.max(this.settings.noiseThreshold / 100.0, MIN_THRESHOLD),
@@ -1358,15 +1379,31 @@ class SeeingSound {
             colormapMode: { experimental: 0, viridis: 1, greyscale: 2, reversed_greyscale: 3 }[this.settings.colormap] ?? 1,
         };
 
-        // 3. Draw with the selected view mode
+        // 4. Draw with the selected view mode
         if (this.settings.viewMode !== '2d' && this.program3d) {
             this.renderWebGL3D(shared);
         } else {
             this.renderWebGL2D(shared);
         }
+    }
 
-        // 4. Advance write head
-        this.writeHead = (this.writeHead + 1) % this.texWidth;
+    /**
+     * Smoothly-interpolated 1D value noise (not per-call random — adjacent
+     * samples in time are correlated), used to give the scroll speed a slow,
+     * organic "breathing" variation instead of a perfectly constant rate.
+     * Returns a value in [-1, 1]. `period` is the wiggle period in seconds.
+     */
+    _organicNoise(tSeconds, period) {
+        const idx = tSeconds / period;
+        const i0 = Math.floor(idx);
+        const i1 = i0 + 1;
+        const f = idx - i0;
+        const s = f * f * (3 - 2 * f); // smoothstep easing between keyframes
+        const rand = (i) => {
+            const x = Math.sin(i * 12.9898) * 43758.5453;
+            return (x - Math.floor(x)) * 2 - 1;
+        };
+        return rand(i0) + (rand(i1) - rand(i0)) * s;
     }
 
     /** 2D scrolling spectrogram — full-screen quad + fragment shader */
