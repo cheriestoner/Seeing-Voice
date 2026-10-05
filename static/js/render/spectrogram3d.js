@@ -1,9 +1,13 @@
 // 3D spectrogram: history texture rendered as a displaced vertex grid (surface / wireframe).
 
 // ── 3D spectrogram ────────────────────────────────────────────────────────
-// Mesh resolution for the 3D surface/wireframe (time columns × frequency rows)
-const GRID_COLS = 220;
-const GRID_ROWS = 140;
+// Mesh: one vertex column per spectrogram column (up to GRID_COLS_MAX, i.e.
+// 8 s at 60 columns/s) × GRID_ROWS frequency rows. Each vertex samples the
+// CENTRE of one texture column and the mesh slides by the fractional part, so
+// peaks never "swim" between vertices (Chrome Music Lab does the same by
+// snapping its texture offset to whole rows). 480 × 128 < 65 536 (Uint16 indices).
+const GRID_COLS_MAX = 480;
+const GRID_ROWS = 128;
 
 // Camera presets (orbit around `target`; az 0 = looking along −z, +π/2 = looking from the newest edge)
 const CAMERA_PRESETS_3D = {
@@ -29,16 +33,17 @@ class Spectrogram3DMethods {
         }
 
         const vsSource = `
-            precision mediump float;
+            precision highp float;             // column indices up to 2048 need highp
             precision mediump int;
-            attribute vec2 a_grid;                // parametric coords in [0,1]
+            attribute vec2 a_grid;                // x = column index (0 = oldest), y = frequency param [0,1]
+            uniform float u_tex_width;            // history texture width (columns)
+            uniform float u_newest_col;           // texture column holding the newest spectrum
+            uniform float u_frac;                 // [0,1): time since that column, in columns
+            uniform float u_ncols;                // columns shown
             uniform sampler2D u_texture;
-            uniform float u_offset;
             uniform float u_min_freq_ratio;
             uniform float u_max_freq_ratio;
-            uniform float u_threshold;
-            uniform float u_visible_width;
-            uniform float u_visible_seconds;
+            uniform mediump float u_threshold;   // shared with the fragment shader: precisions must match
             uniform float u_persistence;
             uniform float u_ref_level;     // recent peak level the fade is measured against
             uniform int u_fade_mode;       // 0 = persistence (level ageing, shared with 2D), 1 = distance
@@ -53,18 +58,21 @@ class Spectrogram3DMethods {
 
             ${FREQ_GLSL}
 
-            // Raw level: drives the HEIGHT, so the terrain keeps its shape as it ages
+            // Raw level at mesh column i (exactly one texture column) — drives the HEIGHT
             float sampleAmp(vec2 g) {
-                float x = fract(u_offset + (g.x - 1.0) * u_visible_width);
+                float col = mod(u_newest_col - (u_ncols - 1.0 - g.x), u_tex_width);
+                float x = (col + 0.5) / u_tex_width;
                 float y = freqTexY(clamp(g.y, 0.0, 1.0));
                 return texture2D(u_texture, vec2(x, y)).r;
             }
 
+            // Age in seconds of mesh column i
+            float ageOf(float i) { return (u_ncols - 1.0 - i + u_frac) / ${COLUMN_RATE}.0; }
+
             // Aged level: drives the COLOUR only (same ageing as 2D). Applying it
             // to the height made the whole surface slope down toward the past.
             float agedAmp(vec2 g) {
-                float age = (1.0 - g.x) * u_visible_seconds;
-                return sampleAmp(g) - age / u_persistence * u_ref_level * (1.0 - u_threshold);
+                return sampleAmp(g) - ageOf(g.x) / u_persistence * u_ref_level * (1.0 - u_threshold);
             }
 
             float heightAt(vec2 g) {
@@ -77,21 +85,22 @@ class Spectrogram3DMethods {
                 float h = heightAt(a_grid);
                 v_amp = u_fade_mode == 1 ? sampleAmp(a_grid) : agedAmp(a_grid);
                 v_freq = a_grid.y;
-                v_time = a_grid.x;
+                // Mesh slides toward the past by the fractional column → smooth motion
+                float t = (a_grid.x - u_frac) / (u_ncols - 1.0);
+                v_time = t;
 
                 // Plane: x = time [-1 old, +1 new], y = amplitude,
                 // z = frequency [+1 low, -1 high] so that, seen from the newest
                 // edge (Front camera), low frequencies are on the left
-                vec3 pos = vec3(a_grid.x * 2.0 - 1.0, h, 1.0 - a_grid.y * 2.0);
+                vec3 pos = vec3(t * 2.0 - 1.0, h, 1.0 - a_grid.y * 2.0);
 
                 if (u_lighting == 1) {
-                    float du = 1.0 / float(${GRID_COLS});
-                    float dv = 1.0 / float(${GRID_ROWS});
-                    float hL = heightAt(a_grid + vec2(-du, 0.0));
-                    float hR = heightAt(a_grid + vec2( du, 0.0));
+                    float dv = 1.0 / float(${GRID_ROWS - 1});
+                    float hL = heightAt(a_grid + vec2(-1.0, 0.0));
+                    float hR = heightAt(a_grid + vec2( 1.0, 0.0));
                     float hD = heightAt(a_grid + vec2(0.0, -dv));
                     float hU = heightAt(a_grid + vec2(0.0,  dv));
-                    float sx = (hR - hL) / (4.0 * du);   // world dx per grid step = 2*du
+                    float sx = (hR - hL) * (u_ncols - 1.0) / 4.0;   // world dx per column = 2/(N-1)
                     float sz = (hU - hD) / (4.0 * dv);
                     v_normal = normalize(vec3(-sx, 1.0, sz));   // z is flipped
                 } else {
@@ -148,23 +157,24 @@ class Spectrogram3DMethods {
         }
         this.program3d = prog;
 
-        // Grid vertices (parametric)
+        // Grid vertices: (column index, frequency param)
         const verts = [];
         for (let j = 0; j < GRID_ROWS; j++) {
-            for (let i = 0; i < GRID_COLS; i++) {
-                verts.push(i / (GRID_COLS - 1), j / (GRID_ROWS - 1));
+            for (let i = 0; i < GRID_COLS_MAX; i++) {
+                verts.push(i, j / (GRID_ROWS - 1));
             }
         }
         this.gridBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.gridBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
 
-        const at = (i, j) => j * GRID_COLS + i;
+        const at = (i, j) => j * GRID_COLS_MAX + i;
 
-        // Triangle indices (surface)
+        // Indices are grouped per time segment (column i → i+1), oldest first,
+        // so drawing the first N−1 segments shows exactly N columns.
         const tris = [];
-        for (let j = 0; j < GRID_ROWS - 1; j++) {
-            for (let i = 0; i < GRID_COLS - 1; i++) {
+        for (let i = 0; i < GRID_COLS_MAX - 1; i++) {
+            for (let j = 0; j < GRID_ROWS - 1; j++) {
                 tris.push(at(i, j), at(i + 1, j), at(i, j + 1));
                 tris.push(at(i + 1, j), at(i + 1, j + 1), at(i, j + 1));
             }
@@ -172,20 +182,17 @@ class Spectrogram3DMethods {
         this.triIndexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.triIndexBuffer);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(tris), gl.STATIC_DRAW);
-        this.triIndexCount = tris.length;
+        this.trisPerSegment = (GRID_ROWS - 1) * 6;
 
-        // Line indices (wireframe): row edges + column edges
         const lines = [];
-        for (let j = 0; j < GRID_ROWS; j++) {
-            for (let i = 0; i < GRID_COLS - 1; i++) lines.push(at(i, j), at(i + 1, j));
-        }
-        for (let i = 0; i < GRID_COLS; i++) {
-            for (let j = 0; j < GRID_ROWS - 1; j++) lines.push(at(i, j), at(i, j + 1));
+        for (let i = 0; i < GRID_COLS_MAX - 1; i++) {
+            for (let j = 0; j < GRID_ROWS; j++) lines.push(at(i, j), at(i + 1, j));          // along time
+            for (let j = 0; j < GRID_ROWS - 1; j++) lines.push(at(i, j), at(i, j + 1));      // along frequency
         }
         this.lineIndexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.lineIndexBuffer);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(lines), gl.STATIC_DRAW);
-        this.lineIndexCount = lines.length;
+        this.linesPerSegment = (GRID_ROWS + GRID_ROWS - 1) * 2;
 
         // Restore array-buffer binding expected by the 2D setup
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
@@ -226,12 +233,14 @@ class Spectrogram3DMethods {
         gl.vertexAttribPointer(gridLoc, 2, gl.FLOAT, false, 0, 0);
 
         gl.uniform1i(gl.getUniformLocation(p, 'u_texture'), 0);
-        gl.uniform1f(gl.getUniformLocation(p, 'u_offset'), s.offset);
         gl.uniform1f(gl.getUniformLocation(p, 'u_min_freq_ratio'), s.minRatio);
         gl.uniform1f(gl.getUniformLocation(p, 'u_max_freq_ratio'), s.maxRatio);
         gl.uniform1f(gl.getUniformLocation(p, 'u_threshold'), s.threshold);
-        gl.uniform1f(gl.getUniformLocation(p, 'u_visible_width'), s.visibleWidthRatio3d);
-        gl.uniform1f(gl.getUniformLocation(p, 'u_visible_seconds'), s.visibleSeconds3d);
+        const n = s.cols3d;
+        gl.uniform1f(gl.getUniformLocation(p, 'u_tex_width'), this.texWidth);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_newest_col'), s.newestCol);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_frac'), s.colFrac);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_ncols'), n);
         gl.uniform1f(gl.getUniformLocation(p, 'u_persistence'), s.persistence);
         gl.uniform1f(gl.getUniformLocation(p, 'u_ref_level'), s.refLevel);
         gl.uniform1i(gl.getUniformLocation(p, 'u_scale_mode'), s.scaleMode);
@@ -245,10 +254,10 @@ class Spectrogram3DMethods {
 
         if (this.settings.viewMode === 'wireframe') {
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.lineIndexBuffer);
-            gl.drawElements(gl.LINES, this.lineIndexCount, gl.UNSIGNED_SHORT, 0);
+            gl.drawElements(gl.LINES, (n - 1) * this.linesPerSegment, gl.UNSIGNED_SHORT, 0);
         } else {
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.triIndexBuffer);
-            gl.drawElements(gl.TRIANGLES, this.triIndexCount, gl.UNSIGNED_SHORT, 0);
+            gl.drawElements(gl.TRIANGLES, (n - 1) * this.trisPerSegment, gl.UNSIGNED_SHORT, 0);
         }
     }
 

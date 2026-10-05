@@ -320,8 +320,9 @@ class SeeingSound {
             visibleWidthRatio: (dataPx / scrollSpeed) / this.texWidth,
             visibleSeconds: (dataPx / scrollSpeed) / COLUMN_RATE,        // age at the oldest end
             // 3D: unchanged history length
-            visibleWidthRatio3d: (canvasWidth / (SCROLL_3D_FACTOR * scrollSpeed)) / this.texWidth,
-            visibleSeconds3d: (canvasWidth / (SCROLL_3D_FACTOR * scrollSpeed)) / COLUMN_RATE,
+            cols3d: Math.max(16, Math.min(GRID_COLS_MAX, Math.round(canvasWidth / (SCROLL_3D_FACTOR * scrollSpeed)))),
+            newestCol: ((this._writeCount - 1) % this.texWidth + this.texWidth) % this.texWidth,
+            colFrac: Math.min(Math.max(pos - (this._writeCount - 1), 0), 0.999),
             persistence: persistenceSeconds(this.settings.trailLength),
             refLevel: Math.max(this._refLevel || 0, MIN_REF_LEVEL),
             scaleMode: this.settings.scale === 'log' ? 1 : 0,
