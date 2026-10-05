@@ -49,6 +49,15 @@ class SeeingSound {
             spec3dCamera: 'front',  // see CAMERA_PRESETS_3D
             spec3dFade: 'distance', // 'distance' (fade the far end) | 'persistence' (shared level ageing)
             spec3dLighting: false,  // shading on the surface style
+            // Pitch contour × k (see render/pitchContour.js)
+            pitchK: 2.0,
+            pitchRef: 'moving',     // 'moving' (moving average) | 'utterance' (utterance mean)
+            pitchRefMs: 300,        // moving-average time constant
+            pitchMin: 70,           // pitch axis, Hz (log)
+            pitchMax: 500,
+            pitchShowRaw: true,     // raw f0 as a dotted line
+            pitchUnderlay: true,    // dimmed spectrogram of the same range underneath
+            pitchColor: '#FF6A3D',
             viewMode: '2d',      // derived from mapping + spec3dStyle (used by the renderers)
             heightScale3d: 0.6   // vertical exaggeration for the 3D surface
         };
@@ -145,6 +154,7 @@ class SeeingSound {
             
             // Fresh history on the audio clock
             this.resetHistory();
+            this.resetPitchHistory();
 
             // Start visualization loop
             this.isRunning = true;
@@ -285,8 +295,12 @@ class SeeingSound {
             this._writeCount += due - this.texWidth;
             due = this.texWidth;
         }
+        const pitchOn = this.settings.mapping === 'pitch';
+        if (pitchOn && due > 0) this.trackPitchFrame();
         for (let k = 0; k < due; k++) {
             this.writeColumn(this._writeCount % this.texWidth, bins);
+            if (pitchOn) this.writePitchColumn(this._writeCount);
+            else if (this._pitch) this._pitch.lf[this._writeCount % this.texWidth] = NaN;
             this._writeCount++;
         }
         this.writeHead = this._writeCount % this.texWidth;
@@ -310,6 +324,7 @@ class SeeingSound {
         const dataHi = flip ? 1 : 1 - gutter / canvasWidth;
         const dataPx = (dataHi - dataLo) * canvasWidth;
         const shared = {
+            pos: pos,
             offset: visualOffsetNorm,
             minRatio: (this.settings.minFreq / nyquist) * heightScale,
             maxRatio: (this.settings.maxFreq / nyquist) * heightScale,
@@ -329,11 +344,27 @@ class SeeingSound {
             colormapMode: { experimental: 0, viridis: 1, greyscale: 2, reversed_greyscale: 3 }[this.settings.colormap] ?? 1,
         };
 
-        // 4. Draw with the selected view mode
-        if (this.settings.viewMode !== '2d' && this.program3d) {
-            this.renderWebGL3D(shared);
+        // 4. Draw with the selected mapping
+        if (this.settings.mapping === 'pitch') {
+            if (this.settings.pitchUnderlay) {
+                // the 2D spectrogram, restricted to the pitch axis (log), no onset flash
+                this.renderWebGL2D({ ...shared,
+                    minRatio: (this.settings.pitchMin / nyquist) * heightScale,
+                    maxRatio: (this.settings.pitchMax / nyquist) * heightScale,
+                    scaleMode: 1, boost: 0 });
+            } else {
+                const bg = this.settings.backgroundStyle;
+                if (bg === 'white') gl.clearColor(1, 1, 1, 1);
+                else if (bg === 'transparent') gl.clearColor(0, 0, 0, 0);
+                else gl.clearColor(0.027, 0.027, 0.067, 1);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+            }
+            this.drawPitchOverlay(shared);
+            this._overlayDirty = true;
         } else {
-            this.renderWebGL2D(shared);
+            if (this._overlayDirty) { this.clearOverlay(); this._overlayDirty = false; }
+            if (this.settings.viewMode !== '2d' && this.program3d) this.renderWebGL3D(shared);
+            else this.renderWebGL2D(shared);
         }
     }
 

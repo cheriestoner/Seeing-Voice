@@ -65,10 +65,9 @@
                     <input type="radio" name="mapping-radio" value="spec3d">
                     <span>3D spectrogram</span>
                 </label>
-                <label class="choice is-disabled">
-                    <input type="radio" name="mapping-radio" value="pitch" disabled>
+                <label class="choice">
+                    <input type="radio" name="mapping-radio" value="pitch">
                     <span>Pitch contour × k</span>
-                    <em>next</em>
                 </label>
             </fieldset>
 
@@ -122,11 +121,46 @@
                 <input type="range" id="heightScale3d" min="0.1" max="1.5" step="0.05" value="0.6" class="slider">
             </div>
             </div>
+
+            <div class="mapping-params" data-for="pitch" hidden>
+                <span class="mapping-params-title">Pitch contour × k</span>
+                <div class="field">
+                    <div class="field-row"><label for="pitchK" class="field-label">Deviation gain k</label><span class="mono" id="pitchKValue">×2.00</span></div>
+                    <input type="range" id="pitchK" min="0" max="6" step="0.05" value="2" class="slider">
+                    <p class="panel-hint">Shown f₀ = ref · (f₀ / ref)<sup>k</sup>: deviations from the reference are scaled k times in cents. k = 1 is the raw contour, k = 0 the reference alone.</p>
+                </div>
+                <div class="field">
+                    <span class="field-label">Reference</span>
+                    <div class="segmented-control" style="--sc-count: 2">
+                        <input type="radio" name="pitchref-radio" id="pitchref-moving" value="moving" checked>
+                        <label for="pitchref-moving">Moving average</label>
+                        <input type="radio" name="pitchref-radio" id="pitchref-utterance" value="utterance">
+                        <label for="pitchref-utterance">Utterance mean</label>
+                        <span class="selection-indicator"></span>
+                    </div>
+                    <div id="pitchRefMsRow">
+                        <div class="field-row"><label for="pitchRefMs" class="field-sublabel">Averaging time</label><span class="mono" id="pitchRefMsValue">300 ms</span></div>
+                        <input type="range" id="pitchRefMs" min="50" max="1500" step="10" value="300" class="slider">
+                    </div>
+                    <p class="panel-hint">Moving average follows the slow trend, so mainly modulation (vibrato, jitter) is amplified. Utterance mean amplifies the whole intonation contour.</p>
+                </div>
+                <div class="field">
+                    <span class="field-label">Pitch axis (log)</span>
+                    <div class="field-row"><label for="pitchMin" class="field-sublabel">Lowest</label><span class="mono" id="pitchMinValue">70 Hz</span></div>
+                    <input type="range" id="pitchMin" min="40" max="300" step="5" value="70" class="slider">
+                    <div class="field-row"><label for="pitchMax" class="field-sublabel">Highest</label><span class="mono" id="pitchMaxValue">500 Hz</span></div>
+                    <input type="range" id="pitchMax" min="150" max="1500" step="10" value="500" class="slider">
+                    <p class="panel-hint">Also the f₀ search range. FFT 2048 or larger (Signal panel) is needed below ~95 Hz.</p>
+                </div>
+                <label class="toggle"><span>Raw f₀ (dotted)</span><input type="checkbox" id="pitchShowRaw" checked></label>
+                <label class="toggle"><span>Spectrogram underneath</span><input type="checkbox" id="pitchUnderlay" checked></label>
+                <label class="toggle"><span>Line colour</span><input type="color" id="pitchColor" value="#FF6A3D" class="color-input"></label>
+            </div>
         </section>
 
         <section class="panel-section" data-section="frequency">
             <h2>Frequency</h2>
-            <div class="field">
+            <div class="field" data-applies="spec2d spec3d">
                 <span class="field-label">Axis</span>
                 <div class="segmented-control" style="--sc-count: 2">
                     <input type="radio" name="scale-radio" id="scale-linear" value="linear" checked>
@@ -136,7 +170,7 @@
                     <span class="selection-indicator"></span>
                 </div>
             </div>
-            <div class="field">
+            <div class="field" data-applies="spec2d spec3d">
                 <div class="field-row">
                     <span class="field-label">Range</span>
                     <span class="mono"><span id="minFreqLabel">0 Hz</span> – <span id="maxFreqLabel">4000 Hz</span></span>
@@ -152,7 +186,7 @@
                     <span class="number-input"><input type="number" id="maxFreqInput" min="0" max="22050" value="4000"><span>Hz</span></span>
                 </div>
             </div>
-            <div class="field">
+            <div class="field" data-applies="spec2d spec3d">
                 <span class="field-label">Quick ranges</span>
                 <div class="chip-row">
                     <button class="preset-btn chip" data-preset="default">Speech 0–4 kHz</button>
@@ -301,6 +335,7 @@
     <main class="stage">
         <div class="spectrogram-container">
             <canvas id="spectrogramCanvas"></canvas>
+            <canvas id="overlayCanvas" aria-hidden="true"></canvas>
 
             <button class="sidebar-show-btn" id="sidebarShowBtn" aria-label="Show sidebar" title="Show sidebar (⌘B / Ctrl+B)">
                 <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9 4.5v15M13.5 10l2 2-2 2"/></svg>
@@ -342,6 +377,8 @@
     <script src="static/js/core.js"></script>
     <script src="static/js/render/spectrogram2d.js"></script>
     <script src="static/js/render/spectrogram3d.js"></script>
+    <script src="static/js/audio/pitch.js"></script>
+    <script src="static/js/render/pitchContour.js"></script>
     <script src="static/js/ui/notify.js"></script>
     <script src="static/js/ui/controls.js"></script>
     <script src="static/js/ui/layout.js"></script>

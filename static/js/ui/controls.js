@@ -213,6 +213,48 @@ class ControlsMethods {
         document.querySelectorAll('input[name="mapping-radio"]').forEach(radio => {
             radio.addEventListener('change', (e) => this.setMapping(e.target.value));
         });
+        // Pitch contour × k
+        const bindRange = (id, key, fmt, after) => {
+            const el = document.getElementById(id);
+            el.addEventListener('input', () => {
+                this.settings[key] = parseFloat(el.value);
+                document.getElementById(id + 'Value').textContent = fmt(this.settings[key]);
+                if (after) after();
+            });
+        };
+        const keepRange = () => {   // keep at least an octave between the pitch limits
+            const s = this.settings;
+            if (s.pitchMax < s.pitchMin * 2) {
+                s.pitchMax = Math.min(1500, s.pitchMin * 2);
+                document.getElementById('pitchMax').value = s.pitchMax;
+                document.getElementById('pitchMaxValue').textContent = `${Math.round(s.pitchMax)} Hz`;
+            }
+            this.updateFrequencyScale();
+        };
+        bindRange('pitchK', 'pitchK', v => `×${v.toFixed(2)}`);
+        bindRange('pitchRefMs', 'pitchRefMs', v => `${v} ms`);
+        bindRange('pitchMin', 'pitchMin', v => `${v} Hz`, keepRange);
+        bindRange('pitchMax', 'pitchMax', v => `${v} Hz`, () => {
+            const s = this.settings;
+            if (s.pitchMin > s.pitchMax / 2) {
+                s.pitchMin = Math.max(40, s.pitchMax / 2);
+                document.getElementById('pitchMin').value = s.pitchMin;
+                document.getElementById('pitchMinValue').textContent = `${Math.round(s.pitchMin)} Hz`;
+            }
+            this.updateFrequencyScale();
+        });
+        document.querySelectorAll('input[name="pitchref-radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.settings.pitchRef = e.target.value;
+                document.getElementById('pitchRefMsRow').hidden = e.target.value !== 'moving';
+                if (this._pitch) this._pitch.refState = NaN;   // restart the reference
+                this.updateSegmentedControlIndicators();
+            });
+        });
+        document.getElementById('pitchShowRaw').addEventListener('change', (e) => { this.settings.pitchShowRaw = e.target.checked; });
+        document.getElementById('pitchUnderlay').addEventListener('change', (e) => { this.settings.pitchUnderlay = e.target.checked; });
+        document.getElementById('pitchColor').addEventListener('input', (e) => { this.settings.pitchColor = e.target.value; });
+
         document.querySelectorAll('input[name="camera3d-radio"]').forEach(radio => {
             radio.addEventListener('change', (e) => { this.applyCameraPreset(e.target.value); this.updateSegmentedControlIndicators(); });
             // clicking the already-selected preset resets a dragged camera
@@ -357,6 +399,7 @@ class ControlsMethods {
         update('style3d-radio', this.settings.spec3dStyle);
         update('camera3d-radio', this.settings.spec3dCamera);
         update('fade3d-radio', this.settings.spec3dFade);
+        update('pitchref-radio', this.settings.pitchRef);
 
         if (this.updateStatusSummary) this.updateStatusSummary();
     }
@@ -392,14 +435,18 @@ class ControlsMethods {
      */
     updateFrequencyScale() {
         const scaleLabels = document.querySelectorAll('.frequency-scale .scale-label');
-        const min = this.settings.minFreq;
-        const max = this.settings.maxFreq;
+        // The pitch mapping has its own (log) axis
+        const axis = this.settings.mapping === 'pitch'
+            ? this.pitchAxis()
+            : { min: this.settings.minFreq, max: this.settings.maxFreq, scale: this.settings.scale };
+        const min = axis.min;
+        const max = axis.max;
         
         // Create logarithmic scale points
         const scalePoints = [];
         const count = 9;
         
-        if (this.settings.scale === 'log') {
+        if (axis.scale === 'log') {
             // Logarithmic scale
             // Ensure min is positive for log scale calculation
             const safeMin = Math.max(min, 1);
@@ -490,6 +537,7 @@ class ControlsMethods {
         this.canvas.style.height = `${rect.height}px`;
 
         this.updateLabelGutter();
+        if (this.sizeOverlay) this.sizeOverlay();
     }
 
     /** Width (CSS px) the 2D data must leave free for the Hz labels on the right. */

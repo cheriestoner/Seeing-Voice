@@ -125,7 +125,9 @@ class LayoutMethods {
                 if (!note) { note = document.createElement('span'); note.className = 'na-note'; el.appendChild(note); }
                 note.textContent = mapping === 'spec3d' && applies.some(a => a.startsWith('spec3d'))
                     ? 'Not used while Fade (3D) is “By distance” — switch it above'
-                    : `Not used by the ${MAPPING_NAMES[mapping]}`;
+                    : mapping === 'pitch' && applies.includes('spec3d')
+                        ? 'Pitch × k uses its own pitch axis (Mapping panel)'
+                        : `Not used by the ${MAPPING_NAMES[mapping]}`;
             } else if (note) {
                 note.remove();
             }
@@ -139,6 +141,8 @@ class LayoutMethods {
 
         const container = document.querySelector('.spectrogram-container');
         if (container) container.classList.toggle('view-3d', mapping === 'spec3d');
+        if (mapping !== 'pitch' && this.clearOverlay) this.clearOverlay();
+        this.updateFrequencyScale();   // the pitch mapping has its own axis
         this.updateSegmentedControlIndicators();
         if (!opts.silent) this.updateStatusSummary();
         requestAnimationFrame(() => this.updateLabelGutter && this.updateLabelGutter());
@@ -152,9 +156,10 @@ class LayoutMethods {
         const strip = document.getElementById('statusStrip');
         if (!strip) return;
         const parts = [
-            MAPPING_NAMES[s.mapping] + (s.mapping === 'spec3d' ? ` (${s.spec3dStyle}, ${s.spec3dCamera}, fade ${s.spec3dFade})` : ''),
+            MAPPING_NAMES[s.mapping] + (s.mapping === 'spec3d' ? ` (${s.spec3dStyle}, ${s.spec3dCamera}, fade ${s.spec3dFade})`
+                : s.mapping === 'pitch' ? ` (k ${(+s.pitchK).toFixed(2)}, ref ${s.pitchRef === 'moving' ? s.pitchRefMs + ' ms' : 'utterance'})` : ''),
             `FFT ${s.fftSize}`,
-            `${s.scale === 'log' ? 'Log' : 'Lin'} ${s.minFreq}–${s.maxFreq} Hz`,
+            s.mapping === 'pitch' ? `Log ${s.pitchMin}–${s.pitchMax} Hz` : `${s.scale === 'log' ? 'Log' : 'Lin'} ${s.minFreq}–${s.maxFreq} Hz`,
             `${s.minDb}…${s.maxDb} dB`,
             `${COLORMAP_NAMES[s.colormap] || s.colormap} on ${GROUND_NAMES[s.backgroundStyle] || s.backgroundStyle}`,
             `${s.scrollSpeed} ${s.scrollDirection === 'right' ? '→' : '←'}`,

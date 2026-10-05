@@ -51,6 +51,25 @@ class PresetsMethods {
         setRadio('speed-radio', s.scrollSpeed);
         setRadio('direction-radio', s.scrollDirection);
         setRadio('background-radio', s.backgroundStyle);
+        // pitch mapping (presets from before it existed keep the defaults)
+        const P = { pitchK: 2.0, pitchRef: 'moving', pitchRefMs: 300, pitchMin: 70, pitchMax: 500,
+                    pitchShowRaw: true, pitchUnderlay: true, pitchColor: '#FF6A3D' };
+        for (const key in P) if (s[key] == null) this.settings[key] = P[key];
+        const st = this.settings;
+        document.getElementById('pitchK').value = st.pitchK;
+        document.getElementById('pitchKValue').textContent = `×${(+st.pitchK).toFixed(2)}`;
+        document.getElementById('pitchRefMs').value = st.pitchRefMs;
+        document.getElementById('pitchRefMsValue').textContent = `${st.pitchRefMs} ms`;
+        document.getElementById('pitchRefMsRow').hidden = st.pitchRef !== 'moving';
+        document.getElementById('pitchMin').value = st.pitchMin;
+        document.getElementById('pitchMinValue').textContent = `${st.pitchMin} Hz`;
+        document.getElementById('pitchMax').value = st.pitchMax;
+        document.getElementById('pitchMaxValue').textContent = `${st.pitchMax} Hz`;
+        document.getElementById('pitchShowRaw').checked = st.pitchShowRaw;
+        document.getElementById('pitchUnderlay').checked = st.pitchUnderlay;
+        document.getElementById('pitchColor').value = st.pitchColor;
+        setRadio('pitchref-radio', st.pitchRef);
+
         if (!s.spec3dCamera) this.settings.spec3dCamera = 'front';
         if (!s.spec3dFade) this.settings.spec3dFade = 'distance';
         if (s.spec3dLighting == null) this.settings.spec3dLighting = false;

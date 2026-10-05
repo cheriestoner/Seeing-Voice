@@ -178,7 +178,7 @@ class Spectrogram2DMethods {
         gl.uniform1f(gl.getUniformLocation(p, 'u_visible_seconds'), s.visibleSeconds);
         gl.uniform1f(gl.getUniformLocation(p, 'u_persistence'), s.persistence);
         gl.uniform1f(gl.getUniformLocation(p, 'u_ref_level'), s.refLevel);
-        gl.uniform1f(gl.getUniformLocation(p, 'u_boost_intensity'), this.settings.boostIntensity);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_boost_intensity'), s.boost ?? this.settings.boostIntensity);
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     }
