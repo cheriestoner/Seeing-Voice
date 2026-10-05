@@ -28,6 +28,8 @@ class Spectrogram3DMethods {
             uniform float u_max_freq_ratio;
             uniform float u_threshold;
             uniform float u_visible_width;
+            uniform float u_visible_seconds;
+            uniform float u_persistence;
             uniform int u_scale_mode;
             uniform mat4 u_mvp;
             uniform float u_height_scale;
@@ -41,7 +43,8 @@ class Spectrogram3DMethods {
             float sampleAmp(vec2 g) {
                 float x = fract(u_offset + (g.x - 1.0) * u_visible_width);
                 float y = freqTexY(clamp(g.y, 0.0, 1.0));
-                return texture2D(u_texture, vec2(x, y)).r;
+                float age = (1.0 - g.x) * u_visible_seconds;   // same ageing as 2D
+                return texture2D(u_texture, vec2(x, y)).r - age / u_persistence * (1.0 - u_threshold);
             }
 
             float heightAt(vec2 g) {
@@ -197,6 +200,8 @@ class Spectrogram3DMethods {
         gl.uniform1f(gl.getUniformLocation(p, 'u_max_freq_ratio'), s.maxRatio);
         gl.uniform1f(gl.getUniformLocation(p, 'u_threshold'), s.threshold);
         gl.uniform1f(gl.getUniformLocation(p, 'u_visible_width'), s.visibleWidthRatio);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_visible_seconds'), s.visibleSeconds);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_persistence'), s.persistence);
         gl.uniform1i(gl.getUniformLocation(p, 'u_scale_mode'), s.scaleMode);
         gl.uniform1i(gl.getUniformLocation(p, 'u_colormap'), s.colormapMode);
         gl.uniformMatrix4fv(gl.getUniformLocation(p, 'u_mvp'), false, this._mvp);

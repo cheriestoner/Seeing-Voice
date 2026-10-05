@@ -41,7 +41,8 @@ class SeeingSound {
             colormap: 'viridis', // 'experimental' or 'viridis'
             backgroundStyle: 'dark', // 'dark' | 'transparent'
             softEdge: true,
-            trailLength: 0.33,   // 0 = short trail, 1 = long trail
+            trailLength: 0.33,   // persistence, see persistenceSeconds() (0.33 ≈ 1.25 s)
+            releaseMs: 120,      // per-bin release time constant (attack is ~instant)
             boostIntensity: 2.5, // flash brightness at cursor edge (0 = off)
             viewMode: '2d',      // '2d' | 'surface' | 'wireframe'
             heightScale3d: 0.6   // vertical exaggeration for the 3D surface
@@ -121,7 +122,8 @@ class SeeingSound {
             // Create analyser node
             this.analyser = this.audioContext.createAnalyser();
             this.analyser.fftSize = this.settings.fftSize;
-            this.analyser.smoothingTimeConstant = 0.2;
+            // Smoothing is done per column on the audio clock (writeColumn), not here
+            this.analyser.smoothingTimeConstant = 0;
             this.applyDbRange();
             
             // Create buffers for frequency data
@@ -294,6 +296,8 @@ class SeeingSound {
             maxRatio: (this.settings.maxFreq / nyquist) * heightScale,
             threshold: Math.max(this.settings.noiseThreshold / 100.0, MIN_THRESHOLD),
             visibleWidthRatio: (canvasWidth / scrollSpeed) / this.texWidth,
+            visibleSeconds: (canvasWidth / scrollSpeed) / COLUMN_RATE,   // age at the left edge
+            persistence: persistenceSeconds(this.settings.trailLength),
             scaleMode: this.settings.scale === 'log' ? 1 : 0,
             colormapMode: { experimental: 0, viridis: 1, greyscale: 2, reversed_greyscale: 3 }[this.settings.colormap] ?? 1,
         };
@@ -306,10 +310,31 @@ class SeeingSound {
         }
     }
 
-    /** Upload one spectrum column into the history texture. */
+    /**
+     * Upload one spectrum column into the history texture, after a per-bin
+     * envelope follower running on the audio clock (one step per column):
+     * fast attack, so sound appears the moment it starts; slower release, so
+     * it settles back instead of flickering. Replaces the AnalyserNode's own
+     * smoothing, which is symmetric and runs per animation frame.
+     */
     writeColumn(col, bins) {
         const gl = this.gl;
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, col, 0, 1, bins, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.frequencyData);
+        if (!this._env || this._env.length !== bins) {
+            this._env = Float32Array.from(this.frequencyData.subarray(0, bins));
+            this._envBytes = new Uint8Array(bins);
+        }
+        const hop = 1 / COLUMN_RATE;
+        const kA = 1 - Math.exp(-hop / ATTACK_SECONDS);
+        const rel = Math.max(this.settings.releaseMs, 1) / 1000;
+        const kR = 1 - Math.exp(-hop / rel);
+        const x = this.frequencyData, env = this._env, out = this._envBytes;
+        for (let i = 0; i < bins; i++) {
+            const e = env[i], v = x[i];
+            const n = e + (v > e ? kA : kR) * (v - e);
+            env[i] = n;
+            out[i] = n;   // Uint8Array assignment truncates + clamps
+        }
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, col, 0, 1, bins, gl.LUMINANCE, gl.UNSIGNED_BYTE, out);
     }
 
     /** Clear the history texture and restart the column clock (called on Start). */
@@ -320,6 +345,7 @@ class SeeingSound {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, this.texWidth, this.texHeight, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, null);
         this._t0 = this.audioContext ? this.audioContext.currentTime : 0;
         this._writeCount = 0;
+        this._env = null;
         this.writeHead = 0;
     }
 

@@ -105,6 +105,7 @@ class LayoutMethods {
             `${s.minDb}…${s.maxDb} dB`,
             `${COLORMAP_NAMES[s.colormap] || s.colormap} on ${GROUND_NAMES[s.backgroundStyle] || s.backgroundStyle}`,
             `${s.scrollSpeed} ${s.scrollDirection === 'right' ? '→' : '←'}`,
+            `rel ${s.releaseMs} ms · persist ${persistenceSeconds(s.trailLength).toFixed(1)} s`,
             s.viewMode === '2d' ? '2D' : `3D ${s.viewMode}`,
         ];
         if (s.noiseThreshold > 0) parts.push(`threshold ${s.noiseThreshold}%`);

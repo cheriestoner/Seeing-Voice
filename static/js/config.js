@@ -15,6 +15,15 @@ const CURSOR_X = 0.67;      // Horizontal position of the newest-data cursor (0 
 // making them identical on 120 Hz (ProMotion) displays.
 const COLUMN_RATE = 60;
 
+// Persistence: seconds for a full-scale component to fade out completely.
+// Every component loses level at the same rate (like the dB-linear decay of a
+// reverberant sound), so quiet parts disappear first and loud parts linger.
+// trailLength slider 0..1 → 0.5 s .. 8 s (log scale).
+// Envelope follower attack (see writeColumn). Short enough to look instantaneous.
+const ATTACK_SECONDS = 0.008;
+
+function persistenceSeconds(trail) { return 0.5 * Math.pow(16, trail); }
+
 // On-screen px per column (so px/s = value × COLUMN_RATE)
 const SCROLL_SPEEDS = {
     'slow': 3,

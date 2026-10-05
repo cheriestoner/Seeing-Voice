@@ -27,7 +27,7 @@
             <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-.9 2-1.8 0-1-.9-1.6-.2-2.6.8-1 2.6-.4 4-1.1 1.6-.8 2.2-2.4 2.2-3.9A8.4 8.4 0 0 0 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="11" cy="7.5" r="1"/><circle cx="15.5" cy="8.5" r="1"/></svg>
             <span>Colour</span>
         </button>
-        <button class="rail-btn" data-panel="motion" aria-label="Motion and view" title="Motion &amp; view">
+        <button class="rail-btn" data-panel="motion" aria-label="Motion and time" title="Motion &amp; time">
             <svg viewBox="0 0 24 24"><path d="M4 12h14M14 7l5 5-5 5"/></svg>
             <span>Motion</span>
         </button>
@@ -145,17 +145,13 @@
                 </label>
             </div>
             <div class="field">
-                <div class="field-row"><label for="trailLength" class="field-label">Trail</label><span class="mono" id="trailLengthValue">33%</span></div>
-                <input type="range" id="trailLength" min="0" max="1" step="0.01" value="0.33" class="slider">
-            </div>
-            <div class="field">
                 <div class="field-row"><label for="boostIntensity" class="field-label">Onset flash</label><span class="mono" id="boostIntensityValue">2.5</span></div>
                 <input type="range" id="boostIntensity" min="0" max="5" step="0.1" value="2.5" class="slider">
             </div>
         </section>
 
         <section class="panel-section" data-section="motion">
-            <h2>Motion &amp; view</h2>
+            <h2>Motion &amp; time</h2>
             <div class="field">
                 <span class="field-label">Scroll speed</span>
                 <div class="segmented-control" style="--sc-count: 3">
@@ -190,6 +186,14 @@
                     <span class="selection-indicator"></span>
                 </div>
                 <p class="panel-hint">3D views: drag to orbit, scroll to zoom.</p>
+            </div>
+            <div class="field">
+                <span class="field-label">Over time</span>
+                <div class="field-row"><label for="releaseMs" class="field-sublabel">Release — how fast a bin settles</label><span class="mono" id="releaseMsValue">120 ms</span></div>
+                <input type="range" id="releaseMs" min="10" max="500" step="5" value="120" class="slider">
+                <div class="field-row"><label for="trailLength" class="field-sublabel">Persistence — loudest sound fades in</label><span class="mono" id="trailLengthValue">1.3 s</span></div>
+                <input type="range" id="trailLength" min="0" max="1" step="0.01" value="0.33" class="slider">
+                <p class="panel-hint">Sound appears as soon as it starts. Each component then loses level at the same rate, so quiet parts vanish first.</p>
             </div>
             <div class="field" id="heightScale3dRow" style="display:none">
                 <div class="field-row"><label for="heightScale3d" class="field-label">3D height</label><span class="mono" id="heightScale3dValue">0.60</span></div>

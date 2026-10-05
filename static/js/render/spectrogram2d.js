@@ -36,7 +36,8 @@ class Spectrogram2DMethods {
             uniform int u_flip;    // 0 = scroll left (←), 1 = scroll right (→)
             uniform int u_bg_mode; // 0 = dark, 1 = transparent, 2 = white
             uniform int u_soft_edge;      // 0 = hard, 1 = soft (only used when transparent)
-            uniform float u_trail_length;    // 0 = short, 1 = long
+            uniform float u_visible_seconds; // age of the data at the left edge
+            uniform float u_persistence;     // s for a full-scale level to fade to nothing
             uniform float u_boost_intensity; // flash brightness at cursor edge
             varying vec2 v_uv;
 
@@ -64,6 +65,12 @@ class Spectrogram2DMethods {
                 float y = freqTexY(v_uv.y);
 
                 float amp = texture2D(u_texture, vec2(x, y)).r;
+
+                // Ageing: every component loses level at the same rate, so it
+                // fades out by its own loudness (quiet first), not by a mask
+                float age = (1.0 - uvx / ${CURSOR_X}) * u_visible_seconds;
+                amp -= age / u_persistence * (1.0 - u_threshold);
+
                 vec3 color = getColor(v_uv.y, amp);
 
                 // Spawn flash — brighten or darken at the newest data edge depending on colormap
@@ -80,20 +87,8 @@ class Spectrogram2DMethods {
                     }
                 }
 
-                // Fade out on the far left (oldest data)
-                float fadeAlpha = 1.0;
-                float fadeOutWidth = mix(${CURSOR_X} - 0.005, 0.05, u_trail_length);
-                if (uvx < fadeOutWidth) {
-                    float t = uvx / fadeOutWidth;
-                    float k = mix(10.0, 3.0, u_trail_length);
-                    fadeAlpha *= exp(k * (t - 1.0));
-                }
-
-                // Tiny blur at the right edge (newest data) — softens without visible lag
-                float edgeBlur = 0.02;
-                if (uvx > (${CURSOR_X} - edgeBlur)) {
-                    fadeAlpha *= smoothstep(${CURSOR_X}, ${CURSOR_X} - edgeBlur, uvx);
-                }
+                // Only a thin feather at the very left edge of the window
+                float fadeAlpha = smoothstep(0.0, 0.03, uvx);
 
                 if (u_bg_mode == 1 || (u_bg_mode == 0 && u_colormap == 3)) {
                     float dataAlpha = (u_soft_edge == 1 || u_colormap == 3)
@@ -174,7 +169,8 @@ class Spectrogram2DMethods {
         const bgMode = { dark: 0, transparent: 1, white: 2 }[this.settings.backgroundStyle] ?? 0;
         gl.uniform1i(gl.getUniformLocation(p, 'u_bg_mode'), bgMode);
         gl.uniform1i(gl.getUniformLocation(p, 'u_soft_edge'), this.settings.softEdge ? 1 : 0);
-        gl.uniform1f(gl.getUniformLocation(p, 'u_trail_length'), this.settings.trailLength);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_visible_seconds'), s.visibleSeconds);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_persistence'), s.persistence);
         gl.uniform1f(gl.getUniformLocation(p, 'u_boost_intensity'), this.settings.boostIntensity);
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

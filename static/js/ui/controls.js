@@ -131,13 +131,19 @@ class ControlsMethods {
         // Trail length control
         document.getElementById('trailLength').addEventListener('input', (e) => {
             this.settings.trailLength = parseFloat(e.target.value);
-            document.getElementById('trailLengthValue').textContent = Math.round(e.target.value * 100) + '%';
+            document.getElementById('trailLengthValue').textContent = persistenceSeconds(this.settings.trailLength).toFixed(1) + ' s';
         });
 
         // Flash boost intensity control
         document.getElementById('boostIntensity').addEventListener('input', (e) => {
             this.settings.boostIntensity = parseFloat(e.target.value);
             document.getElementById('boostIntensityValue').textContent = parseFloat(e.target.value).toFixed(1);
+        });
+
+        // Per-bin release time
+        document.getElementById('releaseMs').addEventListener('input', (e) => {
+            this.settings.releaseMs = parseInt(e.target.value);
+            document.getElementById('releaseMsValue').textContent = `${this.settings.releaseMs} ms`;
         });
 
         // Analyser level range (dB). Keep at least 10 dB between floor and ceiling.
