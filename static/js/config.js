@@ -10,6 +10,12 @@
 const MIN_THRESHOLD = 3e-3; // Minimum shader threshold — prevents near-silent pixels from showing palette color
 const CURSOR_X = 0.67;      // Horizontal position of the newest-data cursor (0 = left, 1 = right)
 
+// Spectrogram columns per second of audio. One column used to be written per
+// animation frame; 60/s keeps the old on-screen speeds on 60 Hz displays while
+// making them identical on 120 Hz (ProMotion) displays.
+const COLUMN_RATE = 60;
+
+// On-screen px per column (so px/s = value × COLUMN_RATE)
 const SCROLL_SPEEDS = {
     'slow': 3,
     'medium': 6,

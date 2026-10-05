@@ -137,6 +137,9 @@ class SeeingSound {
                 await this.audioContext.resume();
             }
             
+            // Fresh history on the audio clock
+            this.resetHistory();
+
             // Start visualization loop
             this.isRunning = true;
             
@@ -254,28 +257,30 @@ class SeeingSound {
         const gl = this.gl;
         if (!gl || !this.program) return;
 
-        // 1. Upload the new frequency column at the current write head
+        // 1. Time base: columns are tied to the AUDIO clock, not to animation
+        //    frames, so the time axis is the same on 60 Hz and 120 Hz screens
+        //    and does not stretch when frames are dropped. One column per hop
+        //    (COLUMN_RATE per second); a frame writes as many columns as are
+        //    due — zero on fast screens, several after a hiccup (the current
+        //    spectrum is repeated, which keeps the timing exact).
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
         const bins = this.analyser.frequencyBinCount;
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, this.writeHead, 0, 1, bins, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.frequencyData);
-
-        // 2. Visual scroll offset: data still arrives exactly one column per
-        // frame (unchanged, above), but the ON-SCREEN scroll position is
-        // driven by its own accumulator with a slow, naturally-varying speed
-        // instead of a metronome-perfect +1 texel every single frame. A
-        // constant, frame-locked advance reads as machine-clocked motion,
-        // since real sound has no such perfectly regular time base. A gentle
-        // pull-back term keeps this from drifting away from the actual write
-        // position over time, so it stays visually in sync with the data.
-        const nowSec = performance.now() / 1000;
-        const speedNoise = this._organicNoise(nowSec, 0.4); // slow ~0.4s wiggle, range [-1, 1]
-        const speedMul = 1.0 + speedNoise * 0.08;           // +/-8% speed variation
-        const drift = this._writeCount - this._visualOffsetTexels;
-        this._visualOffsetTexels += speedMul + drift * 0.02; // small correction keeps it synced
-        this._writeCount += 1;
+        const pos = (this.audioContext.currentTime - this._t0) * COLUMN_RATE; // in columns, fractional
+        let due = Math.floor(pos) + 1 - this._writeCount;
+        if (due > this.texWidth) {                     // e.g. tab was hidden: skip ahead
+            this._writeCount += due - this.texWidth;
+            due = this.texWidth;
+        }
+        for (let k = 0; k < due; k++) {
+            this.writeColumn(this._writeCount % this.texWidth, bins);
+            this._writeCount++;
+        }
         this.writeHead = this._writeCount % this.texWidth;
 
-        let visualOffsetNorm = (this._visualOffsetTexels % this.texWidth) / this.texWidth;
+        // 2. Scroll position follows the same clock, with sub-column precision,
+        //    so motion is smooth at any refresh rate. The cursor samples the
+        //    centre of the column one hop back (both neighbours are written).
+        let visualOffsetNorm = ((pos - 0.5) % this.texWidth) / this.texWidth;
         if (visualOffsetNorm < 0) visualOffsetNorm += 1;
 
         // 3. Shared uniform inputs (used by both the 2D and 3D draw paths)
@@ -301,23 +306,21 @@ class SeeingSound {
         }
     }
 
-    /**
-     * Smoothly-interpolated 1D value noise (not per-call random — adjacent
-     * samples in time are correlated), used to give the scroll speed a slow,
-     * organic "breathing" variation instead of a perfectly constant rate.
-     * Returns a value in [-1, 1]. `period` is the wiggle period in seconds.
-     */
-    _organicNoise(tSeconds, period) {
-        const idx = tSeconds / period;
-        const i0 = Math.floor(idx);
-        const i1 = i0 + 1;
-        const f = idx - i0;
-        const s = f * f * (3 - 2 * f); // smoothstep easing between keyframes
-        const rand = (i) => {
-            const x = Math.sin(i * 12.9898) * 43758.5453;
-            return (x - Math.floor(x)) * 2 - 1;
-        };
-        return rand(i0) + (rand(i1) - rand(i0)) * s;
+    /** Upload one spectrum column into the history texture. */
+    writeColumn(col, bins) {
+        const gl = this.gl;
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, col, 0, 1, bins, gl.LUMINANCE, gl.UNSIGNED_BYTE, this.frequencyData);
+    }
+
+    /** Clear the history texture and restart the column clock (called on Start). */
+    resetHistory() {
+        const gl = this.gl;
+        if (!gl || !this.texture) return;
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, this.texWidth, this.texHeight, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, null);
+        this._t0 = this.audioContext ? this.audioContext.currentTime : 0;
+        this._writeCount = 0;
+        this.writeHead = 0;
     }
 
     createShader(gl, type, source) {

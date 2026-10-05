@@ -13,4 +13,5 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Create and initialize the application
     const app = new SeeingSound();
+    window.__seeingSound = app; // handy for debugging in the console
 });

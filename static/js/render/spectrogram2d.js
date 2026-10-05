@@ -139,7 +139,7 @@ class Spectrogram2DMethods {
         
         this.writeHead = 0;
         this._writeCount = 0;          // monotonic (never wraps) — index of the next column to write
-        this._visualOffsetTexels = 0;  // monotonic float driving the on-screen scroll position
+        this._t0 = 0;                  // audio-clock time of column 0 (set in resetHistory)
 
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
