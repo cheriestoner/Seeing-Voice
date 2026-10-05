@@ -297,13 +297,26 @@ class SeeingSound {
         const heightScale = bins / this.texHeight;   // portion of the texture in use
         const scrollSpeed = SCROLL_SPEEDS[this.settings.scrollSpeed];
         const canvasWidth = this.canvas.width / window.devicePixelRatio;
+        // Newest data at the edge the scroll comes from; with leftward scroll
+        // that is the right edge, so stop short of the Hz label column.
+        const gutter = Math.min(this._labelGutterPx || 0, canvasWidth * 0.5);
+        const flip = this.settings.scrollDirection === 'right';
+        const dataLo = flip ? gutter / canvasWidth : 0;          // in shader (flipped) coords
+        const dataHi = flip ? 1 : 1 - gutter / canvasWidth;
+        const dataPx = (dataHi - dataLo) * canvasWidth;
         const shared = {
             offset: visualOffsetNorm,
             minRatio: (this.settings.minFreq / nyquist) * heightScale,
             maxRatio: (this.settings.maxFreq / nyquist) * heightScale,
             threshold: Math.max(this.settings.noiseThreshold / 100.0, MIN_THRESHOLD),
-            visibleWidthRatio: (canvasWidth / scrollSpeed) / this.texWidth,
-            visibleSeconds: (canvasWidth / scrollSpeed) / COLUMN_RATE,   // age at the left edge
+            // 2D: data spans [dataLo, dataHi] of the width; newest at dataHi
+            dataLo: dataLo,
+            dataHi: dataHi,
+            visibleWidthRatio: (dataPx / scrollSpeed) / this.texWidth,
+            visibleSeconds: (dataPx / scrollSpeed) / COLUMN_RATE,        // age at the oldest end
+            // 3D: unchanged history length
+            visibleWidthRatio3d: (canvasWidth / (SCROLL_3D_FACTOR * scrollSpeed)) / this.texWidth,
+            visibleSeconds3d: (canvasWidth / (SCROLL_3D_FACTOR * scrollSpeed)) / COLUMN_RATE,
             persistence: persistenceSeconds(this.settings.trailLength),
             refLevel: Math.max(this._refLevel || 0, MIN_REF_LEVEL),
             scaleMode: this.settings.scale === 'log' ? 1 : 0,

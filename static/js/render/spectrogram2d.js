@@ -31,6 +31,8 @@ class Spectrogram2DMethods {
             uniform float u_max_freq_ratio;
             uniform float u_threshold;
             uniform float u_visible_width;
+            uniform float u_data_lo;       // data area in (direction-flipped) x: [lo, hi], newest at hi
+            uniform float u_data_hi;
             uniform int u_scale_mode; // 0 = linear, 1 = log
             uniform int u_colormap; // 0 = experimental, 1 = viridis, 2 = greyscale, 3 = reversed greyscale
             uniform int u_flip;    // 0 = scroll left (←), 1 = scroll right (→)
@@ -51,15 +53,16 @@ class Spectrogram2DMethods {
                 // Flip x-axis for right-scrolling direction
                 float uvx = u_flip == 1 ? (1.0 - v_uv.x) : v_uv.x;
 
-                // Right portion is empty — cursor position controlled by CURSOR_X
-                if (uvx > ${CURSOR_X}) {
+                // Outside the data area (e.g. behind the Hz labels): background
+                if (uvx > u_data_hi || uvx < u_data_lo) {
                     if (u_bg_mode == 1) gl_FragColor = vec4(0.0);
                     else gl_FragColor = vec4(backgroundColor, 1.0);
                     return;
                 }
 
-                // X mapping: cursor (uvx=CURSOR_X) = newest, left edge = oldest
-                float x = u_offset + (uvx / ${CURSOR_X} - 1.0) * u_visible_width;
+                // X mapping: t = 1 newest (at the edge), t = 0 oldest
+                float t = (uvx - u_data_lo) / (u_data_hi - u_data_lo);
+                float x = u_offset + (t - 1.0) * u_visible_width;
                 x = fract(x);
 
                 // Y mapping (Frequency Zoom) — shared helper
@@ -69,14 +72,14 @@ class Spectrogram2DMethods {
 
                 // Ageing: every component loses level at the same rate, so it
                 // fades out by its own loudness (quiet first), not by a mask
-                float age = (1.0 - uvx / ${CURSOR_X}) * u_visible_seconds;
+                float age = (1.0 - t) * u_visible_seconds;
                 amp -= age / u_persistence * u_ref_level * (1.0 - u_threshold);
 
                 vec3 color = getColor(v_uv.y, amp);
 
                 // Spawn flash — brighten or darken at the newest data edge depending on colormap
                 if (amp >= u_threshold) {
-                    float distFromEdge = ${CURSOR_X} - uvx;
+                    float distFromEdge = (1.0 - t) * (u_data_hi - u_data_lo);
                     float boostFactor = u_boost_intensity * exp(-distFromEdge * 40.0);
                     if (u_colormap == 3) {
                         // Ink: deepen the ink by the same factor the other maps brighten by.
@@ -89,7 +92,7 @@ class Spectrogram2DMethods {
                 }
 
                 // Only a thin feather at the very left edge of the window
-                float fadeAlpha = smoothstep(0.0, 0.03, uvx);
+                float fadeAlpha = smoothstep(0.0, 0.03, t);
 
                 if (u_bg_mode == 1 || (u_bg_mode == 0 && u_colormap == 3)) {
                     float dataAlpha = (u_soft_edge == 1 || u_colormap == 3)
@@ -164,6 +167,8 @@ class Spectrogram2DMethods {
         gl.uniform1f(gl.getUniformLocation(p, 'u_max_freq_ratio'), s.maxRatio);
         gl.uniform1f(gl.getUniformLocation(p, 'u_threshold'), s.threshold);
         gl.uniform1f(gl.getUniformLocation(p, 'u_visible_width'), s.visibleWidthRatio);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_data_lo'), s.dataLo);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_data_hi'), s.dataHi);
         gl.uniform1i(gl.getUniformLocation(p, 'u_scale_mode'), s.scaleMode);
         gl.uniform1i(gl.getUniformLocation(p, 'u_colormap'), s.colormapMode);
         gl.uniform1i(gl.getUniformLocation(p, 'u_flip'), this.settings.scrollDirection === 'right' ? 1 : 0);

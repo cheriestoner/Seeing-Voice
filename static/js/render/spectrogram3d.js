@@ -200,8 +200,8 @@ class Spectrogram3DMethods {
         gl.uniform1f(gl.getUniformLocation(p, 'u_min_freq_ratio'), s.minRatio);
         gl.uniform1f(gl.getUniformLocation(p, 'u_max_freq_ratio'), s.maxRatio);
         gl.uniform1f(gl.getUniformLocation(p, 'u_threshold'), s.threshold);
-        gl.uniform1f(gl.getUniformLocation(p, 'u_visible_width'), s.visibleWidthRatio);
-        gl.uniform1f(gl.getUniformLocation(p, 'u_visible_seconds'), s.visibleSeconds);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_visible_width'), s.visibleWidthRatio3d);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_visible_seconds'), s.visibleSeconds3d);
         gl.uniform1f(gl.getUniformLocation(p, 'u_persistence'), s.persistence);
         gl.uniform1f(gl.getUniformLocation(p, 'u_ref_level'), s.refLevel);
         gl.uniform1i(gl.getUniformLocation(p, 'u_scale_mode'), s.scaleMode);

@@ -8,7 +8,6 @@
 
 // Constants for visualization
 const MIN_THRESHOLD = 3e-3; // Minimum shader threshold — prevents near-silent pixels from showing palette color
-const CURSOR_X = 0.67;      // Horizontal position of the newest-data cursor (0 = left, 1 = right)
 
 // Spectrogram columns per second (wall clock ≡ audio time for live input). One column used to be written per
 // animation frame; 60/s keeps the old on-screen speeds on 60 Hz displays while
@@ -28,12 +27,15 @@ const MIN_REF_LEVEL = 0.15;
 
 function persistenceSeconds(trail) { return 0.5 * Math.pow(16, trail); }
 
-// On-screen px per column (so px/s = value × COLUMN_RATE)
+// On-screen px per column in the 2D view (px/s = value × COLUMN_RATE).
+// Same on-screen speeds as before, when the data area was 0.67 of the width.
 const SCROLL_SPEEDS = {
-    'slow': 3,
-    'medium': 6,
-    'fast': 12
+    'slow': 2,
+    'medium': 4,
+    'fast': 8
 };
+// The 3D grid keeps its previous history length: canvas width / (1.5 × speed) columns
+const SCROLL_3D_FACTOR = 1.5;
 
 const PRESETS = {
   default: { scale: 'linear', ceiling: 4000,  minFreq: 0,  maxFreq: 4000  },

@@ -426,6 +426,9 @@ class ControlsMethods {
             // Add special highlighting for the 1/4 point
             label.classList.remove('highlight');
         });
+
+        // Label widths may have changed
+        if (this.updateLabelGutter) this.updateLabelGutter();
     }
 
     /**
@@ -478,6 +481,18 @@ class ControlsMethods {
         // Keep the CSS size unchanged
         this.canvas.style.width = `${rect.width}px`;
         this.canvas.style.height = `${rect.height}px`;
+
+        this.updateLabelGutter();
+    }
+
+    /** Width (CSS px) the 2D data must leave free for the Hz labels on the right. */
+    updateLabelGutter() {
+        const scale = document.querySelector('.frequency-scale');
+        if (!scale || !this.canvas) { this._labelGutterPx = 0; return; }
+        const visible = scale.offsetParent !== null && getComputedStyle(scale).display !== 'none';
+        if (!visible) { this._labelGutterPx = 0; return; }
+        const c = this.canvas.getBoundingClientRect(), s = scale.getBoundingClientRect();
+        this._labelGutterPx = Math.max(0, c.right - s.left) + 10;   // + a little air
     }
 
     /**
