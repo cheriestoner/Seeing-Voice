@@ -1,0 +1,41 @@
+/**
+ * Seeing Sound — shared constants and frequency-slider helpers.
+ *
+ * Script load order (see index.html): config → gl/* → core → render/* → ui/* → main.
+ * All files are classic scripts sharing the global scope, so the page still
+ * works when opened directly from disk (file://).
+ */
+
+// Constants for visualization
+const MIN_THRESHOLD = 3e-3; // Minimum shader threshold — prevents near-silent pixels from showing palette color
+const CURSOR_X = 0.67;      // Horizontal position of the newest-data cursor (0 = left, 1 = right)
+
+const SCROLL_SPEEDS = {
+    'slow': 3,
+    'medium': 6,
+    'fast': 12
+};
+
+const PRESETS = {
+  default: { scale: 'linear', ceiling: 4000,  minFreq: 0,  maxFreq: 4000  },
+  music:   { scale: 'log',    ceiling: 22050, minFreq: 20, maxFreq: 20000 },
+};
+
+// Frequency slider helpers — slider internal range is always 0–SLIDER_STEPS (1000)
+// Hz ceiling lives in maxFreqInput; scale comes from the Lin/Log switch
+const SLIDER_STEPS = 1000;
+
+function sliderToFreq(pos, ceiling, scale) {
+    if (scale === 'log')
+        return Math.round(Math.expm1(pos / SLIDER_STEPS * Math.log1p(ceiling)));
+    return Math.round(pos / SLIDER_STEPS * ceiling);
+}
+function freqToSlider(freq, ceiling, scale) {
+    if (freq <= 0 || ceiling <= 0) return 0;
+    if (scale === 'log')
+        return Math.round(Math.log1p(Math.min(freq, ceiling)) / Math.log1p(ceiling) * SLIDER_STEPS);
+    return Math.round(Math.min(freq, ceiling) / ceiling * SLIDER_STEPS);
+}
+function getCeiling() {
+    return parseInt(document.getElementById('maxFreqInput').value) || 4000;
+}
