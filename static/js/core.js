@@ -66,7 +66,7 @@ class SeeingSound {
         this._activePresetName = null;
 
         // 3D orbit camera + reusable matrices
-        this._cam = { az: Math.PI / 2, el: 0.42, dist: 3.3, target: [-0.3, 0.0, 0] }; // = CAMERA_PRESETS_3D.front
+        this._cam = { az: Math.PI / 2, el: 1.0, dist: 3.1, target: [-0.15, 0.0, 0] }; // = CAMERA_PRESETS_3D.front
         this._proj = new Float32Array(16);
         this._view = new Float32Array(16);
         this._mvp = new Float32Array(16);

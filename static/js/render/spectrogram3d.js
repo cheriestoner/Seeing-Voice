@@ -11,8 +11,8 @@ const GRID_ROWS = 128;
 
 // Camera presets (orbit around `target`; az 0 = looking along −z, +π/2 = looking from the newest edge)
 const CAMERA_PRESETS_3D = {
-    // Chrome Music Lab–like: low, from the newest edge, history recedes into the distance
-    front:   { az:  Math.PI / 2, el: 0.42, dist: 3.3,  target: [-0.3, 0.0, 0] },
+    // Chrome Music Lab–like: looking down (~57°) over the newest edge, history recedes
+    front:   { az:  Math.PI / 2, el: 1.0,  dist: 3.1,  target: [-0.15, 0.0, 0] },
     // Waterfall: time runs left → right like the 2D view, frequency goes into depth
     side:    { az: 0,            el: 0.75, dist: 2.9,  target: [0, 0.0, 0] },
     oblique: { az:  0.75,        el: 0.50, dist: 2.7,  target: [0, 0.1, 0] },
