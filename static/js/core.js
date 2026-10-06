@@ -349,9 +349,19 @@ class SeeingSound {
 
         // 4. Draw with the selected mapping
         if (this.settings.mapping === 'pitch') {
-            if (this.settings.pitchUnderlay && this.settings.pitchStyle !== 'flight') {
+            // Comet styles: the head sits a little inside the data area so its
+            // glow has room ahead of it; the time axis (and the spectrogram
+            // underneath) end at the head. The overlay still clips to the full area.
+            const st = this.settings.pitchStyle;
+            const inset = (st === 'ribbon' || st === 'plume')
+                ? Math.min(Math.max(canvasWidth * 0.08, 72), 140, dataPx * 0.3) / canvasWidth : 0;
+            const pitchSh = { ...shared, clipLo: dataLo, clipHi: dataHi,
+                dataHi: dataHi - inset };          // newest is at dataHi in shader coords either way
+            pitchSh.visibleWidthRatio = ((pitchSh.dataHi - pitchSh.dataLo) * canvasWidth / scrollSpeed) / this.texWidth;
+            pitchSh.visibleSeconds = ((pitchSh.dataHi - pitchSh.dataLo) * canvasWidth / scrollSpeed) / COLUMN_RATE;
+            if (this.settings.pitchUnderlay && st !== 'flight') {
                 // the 2D spectrogram, restricted to the pitch axis (log), no onset flash
-                this.renderWebGL2D({ ...shared,
+                this.renderWebGL2D({ ...pitchSh,
                     minRatio: (this.settings.pitchMin / nyquist) * heightScale,
                     maxRatio: (this.settings.pitchMax / nyquist) * heightScale,
                     scaleMode: 1, boost: 0 });
@@ -362,7 +372,7 @@ class SeeingSound {
                 else gl.clearColor(0.027, 0.027, 0.067, 1);
                 gl.clear(gl.COLOR_BUFFER_BIT);
             }
-            this.drawPitchOverlay(shared);
+            this.drawPitchOverlay(pitchSh);
             this._overlayDirty = true;
         } else {
             if (this._overlayDirty) { this.clearOverlay(); this._overlayDirty = false; }

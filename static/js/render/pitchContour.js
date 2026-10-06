@@ -159,13 +159,17 @@ class PitchMethods {
         const style = s.pitchStyle || 'line';
         const flip = s.scrollDirection === 'right';
         // data area in screen px; newest at `x0`, older toward `dir`
-        const loPx = (flip ? 1 - sh.dataHi : sh.dataLo) * W;
-        const hiPx = (flip ? 1 - sh.dataLo : sh.dataHi) * W;
+        // full data area (clip) and the time axis inside it (newest at x0)
+        const cLo = sh.clipLo ?? sh.dataLo, cHi = sh.clipHi ?? sh.dataHi;
+        const loPx = (flip ? 1 - cHi : cLo) * W;
+        const hiPx = (flip ? 1 - cLo : cHi) * W;
+        const axLo = (flip ? 1 - sh.dataHi : sh.dataLo) * W;
+        const axHi = (flip ? 1 - sh.dataLo : sh.dataHi) * W;
         const ground = s.backgroundStyle === 'white' ? [255, 255, 255] : [7, 7, 15];
         const lmin = Math.log2(s.pitchMin), lmax = Math.log2(s.pitchMax);
         const g = {
             ctx, W, H, loPx, hiPx, flip,
-            x0: flip ? loPx : hiPx,
+            x0: flip ? axLo : axHi,
             dir: flip ? 1 : -1,
             pxPerCol: SCROLL_SPEEDS[s.scrollSpeed],
             yOf: (l) => H * (1 - (l - lmin) / (lmax - lmin)),
@@ -174,7 +178,7 @@ class PitchMethods {
             pos: sh.pos,
             paper: s.backgroundStyle === 'white',
         };
-        g.nVis = Math.ceil((hiPx - loPx) / g.pxPerCol) + 2;
+        g.nVis = Math.ceil((axHi - axLo) / g.pxPerCol) + 2;
         const k = s.pitchK;
         g.shown = (i) => {
             const lf = P.lf[i], ref = P.ref[i];
@@ -373,7 +377,7 @@ class PitchMethods {
         const ctx = g.ctx, P = this._pitch;
         const span = g.hiPx - g.loPx;
         // louder → away from the frequency labels' side, like the time axis
-        const xOfAmp = (amp) => g.flip ? g.hiPx - span * (0.10 + 0.80 * amp) : g.loPx + span * (0.10 + 0.80 * amp);
+        const xOfAmp = (amp) => g.flip ? g.hiPx - span * (0.10 + 0.74 * amp) : g.loPx + span * (0.10 + 0.74 * amp);
 
         ctx.save();
         ctx.font = '11px ui-monospace, "SF Mono", Menlo, monospace';
