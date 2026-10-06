@@ -157,10 +157,25 @@
             <section class="acc" data-acc="contour" data-for="pitch">
                 <button class="acc-head" aria-expanded="true">
                     <svg class="acc-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-                    <span class="acc-title">Contour</span>
+                    <span class="acc-title">Pitch</span>
                     <span class="acc-summary mono" data-summary="contour"></span>
                 </button>
                 <div class="acc-body">
+                        <div class="field">
+                            <span class="field-label">Style</span>
+                            <div class="segmented-control" style="--sc-count: 4">
+                                <input type="radio" name="pitchstyle-radio" id="pitchstyle-line" value="line">
+                                <label for="pitchstyle-line">Line</label>
+                                <input type="radio" name="pitchstyle-radio" id="pitchstyle-ribbon" value="ribbon" checked>
+                                <label for="pitchstyle-ribbon">Ribbon</label>
+                                <input type="radio" name="pitchstyle-radio" id="pitchstyle-plume" value="plume">
+                                <label for="pitchstyle-plume">Plume</label>
+                                <input type="radio" name="pitchstyle-radio" id="pitchstyle-flight" value="flight">
+                                <label for="pitchstyle-flight">Flight</label>
+                                <span class="selection-indicator"></span>
+                            </div>
+                            <p class="panel-hint" id="pitchStyleHint"></p>
+                        </div>
                         <div class="field">
                             <div class="field-row"><label for="pitchK" class="field-label">Deviation gain k</label><span class="mono" id="pitchKValue">×2.00</span></div>
                             <input type="range" id="pitchK" min="0" max="6" step="0.05" value="2" class="slider">
@@ -206,9 +221,10 @@
                     <span class="acc-summary mono" data-summary="layers"></span>
                 </button>
                 <div class="acc-body">
-                        <label class="toggle"><span>Raw f₀ (dotted)</span><input type="checkbox" id="pitchShowRaw" checked></label>
-                        <label class="toggle"><span>Spectrogram underneath</span><input type="checkbox" id="pitchUnderlay" checked></label>
-                        <label class="toggle"><span>Line colour</span><input type="color" id="pitchColor" value="#FF6A3D" class="color-input"></label>
+                        <label class="toggle" id="pitchShowRawRow"><span>Raw f₀ (dotted)</span><input type="checkbox" id="pitchShowRaw" checked></label>
+                        <label class="toggle" id="pitchUnderlayRow"><span>Spectrogram underneath</span><input type="checkbox" id="pitchUnderlay" checked></label>
+                        <label class="toggle" id="pitchColorRow"><span>Line colour</span><input type="color" id="pitchColor" value="#FF6A3D" class="color-input"></label>
+                        <p class="panel-hint" id="pitchLayersHint" hidden>Free flight has no time axis, so there is no spectrogram or raw f₀ under it.</p>
                 </div>
             </section>
             </div>

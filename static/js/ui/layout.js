@@ -110,6 +110,7 @@ class LayoutMethods {
             });
         });
 
+        this.syncPitchStyleUI();
         this.setMapping(this.settings.mapping, { silent: true });
         this.updateStatusSummary();
     }
@@ -165,9 +166,9 @@ class LayoutMethods {
         const summaries = {
             view: `${s.spec3dCamera} · ${s.spec3dStyle}${s.spec3dStyle === 'surface' && s.spec3dLighting ? ' · lit' : ''}`,
             freq: `${s.scale === 'log' ? 'Log' : 'Lin'} ${s.minFreq}–${s.maxFreq} Hz`,
-            contour: `k ${(+s.pitchK).toFixed(2)} · ${s.pitchRef === 'moving' ? 'ref ' + s.pitchRefMs + ' ms' : 'utterance'}`,
+            contour: `${{ line: 'Line', ribbon: 'Ribbon', plume: 'Plume', flight: 'Flight' }[s.pitchStyle]} · k ${(+s.pitchK).toFixed(2)} · ${s.pitchRef === 'moving' ? 'ref ' + s.pitchRefMs + ' ms' : 'utterance'}`,
             paxis: `${s.pitchMin}–${s.pitchMax} Hz`,
-            layers: [s.pitchShowRaw && 'raw f₀', s.pitchUnderlay && 'underlay'].filter(Boolean).join(' · ') || 'contour only',
+            layers: s.pitchStyle === 'flight' ? 'no time axis' : [s.pitchShowRaw && 'raw f₀', s.pitchUnderlay && 'underlay'].filter(Boolean).join(' · ') || 'pitch only',
         };
         document.querySelectorAll('[data-summary]').forEach(el => { el.textContent = summaries[el.dataset.summary] || ''; });
 
@@ -175,7 +176,7 @@ class LayoutMethods {
         if (!strip) return;
         const parts = [
             MAPPING_NAMES[s.mapping] + (s.mapping === 'spec3d' ? ` (${s.spec3dStyle}, ${s.spec3dCamera}, fade ${s.spec3dFade})`
-                : s.mapping === 'pitch' ? ` (k ${(+s.pitchK).toFixed(2)}, ref ${s.pitchRef === 'moving' ? s.pitchRefMs + ' ms' : 'utterance'})` : ''),
+                : s.mapping === 'pitch' ? ` (${s.pitchStyle}, k ${(+s.pitchK).toFixed(2)}, ref ${s.pitchRef === 'moving' ? s.pitchRefMs + ' ms' : 'utterance'})` : ''),
             `FFT ${s.fftSize}`,
             s.mapping === 'pitch' ? `Log ${s.pitchMin}–${s.pitchMax} Hz` : `${s.scale === 'log' ? 'Log' : 'Lin'} ${s.minFreq}–${s.maxFreq} Hz`,
             `${s.minDb}…${s.maxDb} dB`,

@@ -50,6 +50,7 @@ class SeeingSound {
             spec3dFade: 'distance', // 'distance' (fade the far end) | 'persistence' (shared level ageing)
             spec3dLighting: false,  // shading on the surface style
             // Pitch contour × k (see render/pitchContour.js)
+            pitchStyle: 'ribbon',   // 'line' | 'ribbon' | 'plume' | 'flight' (comet styles)
             pitchK: 2.0,
             pitchRef: 'moving',     // 'moving' (moving average) | 'utterance' (utterance mean)
             pitchRefMs: 300,        // moving-average time constant
@@ -348,7 +349,7 @@ class SeeingSound {
 
         // 4. Draw with the selected mapping
         if (this.settings.mapping === 'pitch') {
-            if (this.settings.pitchUnderlay) {
+            if (this.settings.pitchUnderlay && this.settings.pitchStyle !== 'flight') {
                 // the 2D spectrogram, restricted to the pitch axis (log), no onset flash
                 this.renderWebGL2D({ ...shared,
                     minRatio: (this.settings.pitchMin / nyquist) * heightScale,

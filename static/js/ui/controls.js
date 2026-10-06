@@ -253,6 +253,13 @@ class ControlsMethods {
                 this.updateSegmentedControlIndicators();
             });
         });
+        document.querySelectorAll('input[name="pitchstyle-radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.settings.pitchStyle = e.target.value;
+                this.syncPitchStyleUI();
+                this.updateSegmentedControlIndicators();
+            });
+        });
         document.getElementById('pitchShowRaw').addEventListener('change', (e) => { this.settings.pitchShowRaw = e.target.checked; });
         document.getElementById('pitchUnderlay').addEventListener('change', (e) => { this.settings.pitchUnderlay = e.target.checked; });
         document.getElementById('pitchColor').addEventListener('input', (e) => { this.settings.pitchColor = e.target.value; });
@@ -402,6 +409,7 @@ class ControlsMethods {
         update('camera3d-radio', this.settings.spec3dCamera);
         update('fade3d-radio', this.settings.spec3dFade);
         update('pitchref-radio', this.settings.pitchRef);
+        update('pitchstyle-radio', this.settings.pitchStyle);
 
         if (this.updateStatusSummary) this.updateStatusSummary();
     }

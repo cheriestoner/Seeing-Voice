@@ -52,7 +52,7 @@ class PresetsMethods {
         setRadio('direction-radio', s.scrollDirection);
         setRadio('background-radio', s.backgroundStyle);
         // pitch mapping (presets from before it existed keep the defaults)
-        const P = { pitchK: 2.0, pitchRef: 'moving', pitchRefMs: 300, pitchMin: 70, pitchMax: 500,
+        const P = { pitchStyle: 'ribbon', pitchK: 2.0, pitchRef: 'moving', pitchRefMs: 300, pitchMin: 70, pitchMax: 500,
                     pitchShowRaw: true, pitchUnderlay: true, pitchColor: '#FF6A3D',
                     pitchVoicingDb: -55, pitchThreshold: 0.15 };
         for (const key in P) if (s[key] == null) this.settings[key] = P[key];
@@ -74,6 +74,8 @@ class PresetsMethods {
         document.getElementById('pitchThreshold').value = st.pitchThreshold;
         document.getElementById('pitchThresholdValue').textContent = (+st.pitchThreshold).toFixed(2);
         setRadio('pitchref-radio', st.pitchRef);
+        setRadio('pitchstyle-radio', st.pitchStyle);
+        this.syncPitchStyleUI();
 
         if (!s.spec3dCamera) this.settings.spec3dCamera = 'front';
         if (!s.spec3dFade) this.settings.spec3dFade = 'distance';
