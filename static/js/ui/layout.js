@@ -43,6 +43,7 @@ class LayoutMethods {
         // Restore the last open section
         let last = null;
         try { last = localStorage.getItem('seeing_sound_panel'); } catch (e) { /* ignore */ }
+        if (['mapping', 'frequency', 'motion', 'detail'].includes(last)) last = 'vis';
         const lastBtn = railButtons.find(b => b.dataset.panel === last);
         if (!small && lastBtn && !lastBtn.classList.contains('is-active')) lastBtn.click();
 
@@ -90,6 +91,25 @@ class LayoutMethods {
             panel.addEventListener('input', () => this.updateStatusSummary());
             panel.addEventListener('change', () => this.updateStatusSummary());
         }
+        // Accordion groups in the Visualisation panel (open state remembered)
+        let openSet = null;
+        try { openSet = JSON.parse(localStorage.getItem('seeing_sound_acc') || 'null'); } catch (e) { /* ignore */ }
+        if (!Array.isArray(openSet)) openSet = ['view', 'freq', 'contour'];
+        document.querySelectorAll('.acc').forEach(acc => {
+            const head = acc.querySelector('.acc-head');
+            const setOpen = (on) => {
+                acc.classList.toggle('is-open', on);
+                head.setAttribute('aria-expanded', String(on));
+            };
+            setOpen(openSet.includes(acc.dataset.acc));
+            head.addEventListener('click', () => {
+                setOpen(!acc.classList.contains('is-open'));
+                const now = [...document.querySelectorAll('.acc.is-open')].map(a => a.dataset.acc);
+                try { localStorage.setItem('seeing_sound_acc', JSON.stringify(now)); } catch (e) { /* ignore */ }
+                this.updateSegmentedControlIndicators();
+            });
+        });
+
         this.setMapping(this.settings.mapping, { silent: true });
         this.updateStatusSummary();
     }
@@ -110,31 +130,19 @@ class LayoutMethods {
 
         const radio = document.querySelector(`input[name="mapping-radio"][value="${mapping}"]`);
         if (radio) radio.checked = true;
-        document.querySelectorAll('.mapping-params').forEach(el => { el.hidden = el.dataset.for !== mapping; });
-        // data-applies lists where a shared control is used: a mapping id, or a
-        // finer key such as 'spec3d-persistence' (3D with persistence fading)
+        // Visualisation panel: only this mapping's own groups
+        document.querySelectorAll('.acc[data-for]').forEach(el => {
+            el.hidden = !el.dataset.for.split(/\s+/).includes(mapping);
+        });
+        // Shared panels: a control listed for other mappings only is hidden.
+        // data-applies holds mapping ids or finer keys ('spec3d-persistence' =
+        // 3D with persistence fading).
         const keys = [mapping];
         if (mapping === 'spec3d') keys.push(`spec3d-${s.spec3dFade}`);
         document.querySelectorAll('[data-applies]').forEach(el => {
-            const applies = el.dataset.applies.split(/\s+/);
-            const na = !applies.some(a => keys.includes(a));
-            el.classList.toggle('is-na', na);
-            el.querySelectorAll('input').forEach(i => { i.disabled = na; });
-            let note = el.querySelector(':scope > .na-note');
-            if (na) {
-                if (!note) { note = document.createElement('span'); note.className = 'na-note'; el.appendChild(note); }
-                note.textContent = mapping === 'spec3d' && applies.some(a => a.startsWith('spec3d'))
-                    ? 'Not used while Fade (3D) is “By distance” — switch it above'
-                    : mapping === 'pitch' && applies.includes('spec3d')
-                        ? 'Pitch × k uses its own pitch axis (Mapping panel)'
-                        : `Not used by the ${MAPPING_NAMES[mapping]}`;
-            } else if (note) {
-                note.remove();
-            }
+            el.hidden = !el.dataset.applies.split(/\s+/).some(a => keys.includes(a));
         });
-
-        const fadeRow = document.getElementById('fade3dRow');
-        if (fadeRow) fadeRow.hidden = mapping !== 'spec3d';
+        document.querySelectorAll('.scope-name').forEach(el => { el.textContent = MAPPING_NAMES[mapping]; });
 
         const lightRow = document.getElementById('lighting3dRow');
         if (lightRow) lightRow.hidden = s.spec3dStyle !== 'surface';
@@ -152,6 +160,16 @@ class LayoutMethods {
         const s = this.settings;
         const container = document.querySelector('.spectrogram-container');
         if (container) container.dataset.ground = s.backgroundStyle;
+
+        // one-line summaries on the accordion headers
+        const summaries = {
+            view: `${s.spec3dCamera} · ${s.spec3dStyle}${s.spec3dStyle === 'surface' && s.spec3dLighting ? ' · lit' : ''}`,
+            freq: `${s.scale === 'log' ? 'Log' : 'Lin'} ${s.minFreq}–${s.maxFreq} Hz`,
+            contour: `k ${(+s.pitchK).toFixed(2)} · ${s.pitchRef === 'moving' ? 'ref ' + s.pitchRefMs + ' ms' : 'utterance'}`,
+            paxis: `${s.pitchMin}–${s.pitchMax} Hz`,
+            layers: [s.pitchShowRaw && 'raw f₀', s.pitchUnderlay && 'underlay'].filter(Boolean).join(' · ') || 'contour only',
+        };
+        document.querySelectorAll('[data-summary]').forEach(el => { el.textContent = summaries[el.dataset.summary] || ''; });
 
         const strip = document.getElementById('statusStrip');
         if (!strip) return;

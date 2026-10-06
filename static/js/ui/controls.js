@@ -232,6 +232,8 @@ class ControlsMethods {
             this.updateFrequencyScale();
         };
         bindRange('pitchK', 'pitchK', v => `×${v.toFixed(2)}`);
+        bindRange('pitchVoicingDb', 'pitchVoicingDb', v => `−${Math.abs(v)} dBFS`);
+        bindRange('pitchThreshold', 'pitchThreshold', v => v.toFixed(2));
         bindRange('pitchRefMs', 'pitchRefMs', v => `${v} ms`);
         bindRange('pitchMin', 'pitchMin', v => `${v} Hz`, keepRange);
         bindRange('pitchMax', 'pitchMax', v => `${v} Hz`, () => {

@@ -53,7 +53,8 @@ class PresetsMethods {
         setRadio('background-radio', s.backgroundStyle);
         // pitch mapping (presets from before it existed keep the defaults)
         const P = { pitchK: 2.0, pitchRef: 'moving', pitchRefMs: 300, pitchMin: 70, pitchMax: 500,
-                    pitchShowRaw: true, pitchUnderlay: true, pitchColor: '#FF6A3D' };
+                    pitchShowRaw: true, pitchUnderlay: true, pitchColor: '#FF6A3D',
+                    pitchVoicingDb: -55, pitchThreshold: 0.15 };
         for (const key in P) if (s[key] == null) this.settings[key] = P[key];
         const st = this.settings;
         document.getElementById('pitchK').value = st.pitchK;
@@ -68,6 +69,10 @@ class PresetsMethods {
         document.getElementById('pitchShowRaw').checked = st.pitchShowRaw;
         document.getElementById('pitchUnderlay').checked = st.pitchUnderlay;
         document.getElementById('pitchColor').value = st.pitchColor;
+        document.getElementById('pitchVoicingDb').value = st.pitchVoicingDb;
+        document.getElementById('pitchVoicingDbValue').textContent = `−${Math.abs(st.pitchVoicingDb)} dBFS`;
+        document.getElementById('pitchThreshold').value = st.pitchThreshold;
+        document.getElementById('pitchThresholdValue').textContent = (+st.pitchThreshold).toFixed(2);
         setRadio('pitchref-radio', st.pitchRef);
 
         if (!s.spec3dCamera) this.settings.spec3dCamera = 'front';

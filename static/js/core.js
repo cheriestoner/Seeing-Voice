@@ -58,6 +58,8 @@ class SeeingSound {
             pitchShowRaw: true,     // raw f0 as a dotted line
             pitchUnderlay: true,    // dimmed spectrogram of the same range underneath
             pitchColor: '#FF6A3D',
+            pitchVoicingDb: -55,    // pitch tracking: level gate (dBFS)
+            pitchThreshold: 0.15,   // pitch tracking: YIN threshold
             viewMode: '2d',      // derived from mapping + spec3dStyle (used by the renderers)
             heightScale3d: 0.6   // vertical exaggeration for the 3D surface
         };

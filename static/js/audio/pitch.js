@@ -3,6 +3,7 @@
 //
 // detectPitchYIN(buf, sampleRate, fmin, fmax, threshold)
 //   buf        Float32Array of time-domain samples (AnalyserNode.getFloatTimeDomainData)
+//   threshold  YIN threshold (lower = stricter); minRmsDb = voicing level gate (dBFS)
 //   returns    { f0, aperiodicity, rms } — f0 is null when unvoiced
 //
 // The analysis window is the analyser's fftSize; YIN needs about two periods
@@ -18,7 +19,7 @@ const PITCH_DEFAULTS = {
 let _yinScratch = null;
 let _yinDecim = null;
 
-function detectPitchYIN(input, sampleRate, fmin, fmax, threshold = PITCH_DEFAULTS.threshold) {
+function detectPitchYIN(input, sampleRate, fmin, fmax, threshold = PITCH_DEFAULTS.threshold, minRmsDb = PITCH_DEFAULTS.minRmsDb) {
     // Above ~30 kHz, halve the rate first (pairwise average = gentle low-pass):
     // voice f0 needs nothing near that bandwidth and it cuts the cost by ~4×.
     let buf = input;
@@ -36,7 +37,7 @@ function detectPitchYIN(input, sampleRate, fmin, fmax, threshold = PITCH_DEFAULT
     for (let i = 0; i < n; i++) sumSq += buf[i] * buf[i];
     const rms = Math.sqrt(sumSq / n);
     const rmsDb = 20 * Math.log10(rms + 1e-12);
-    if (rmsDb < PITCH_DEFAULTS.minRmsDb) return { f0: null, aperiodicity: 1, rms };
+    if (rmsDb < minRmsDb) return { f0: null, aperiodicity: 1, rms };
 
     const tauMin = Math.max(2, Math.floor(sampleRate / fmax));
     const tauMax = Math.min(Math.floor(sampleRate / fmin), Math.floor(n / 2));

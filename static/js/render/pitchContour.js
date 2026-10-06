@@ -38,7 +38,8 @@ class PitchMethods {
         if (!this.floatTime || this.floatTime.length !== a.fftSize) this.floatTime = new Float32Array(a.fftSize);
         a.getFloatTimeDomainData(this.floatTime);
         const s = this.settings;
-        const r = detectPitchYIN(this.floatTime, this.audioContext.sampleRate, s.pitchMin * 0.8, s.pitchMax * 1.25);
+        const r = detectPitchYIN(this.floatTime, this.audioContext.sampleRate, s.pitchMin * 0.8, s.pitchMax * 1.25,
+                                 s.pitchThreshold, s.pitchVoicingDb);
         const P = this._pitch;
         if (r.f0 == null) {
             P.frameLf = NaN;

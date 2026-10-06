@@ -99,7 +99,70 @@ button { cursor: pointer; }
 .rail-btn span { font-size: 10.5px; font-weight: 600; letter-spacing: .02em; }
 .rail-btn:hover { background: var(--paper-2); color: var(--ink); }
 .rail-btn.is-active { background: var(--ink); color: var(--paper); }
-.rail-hide { margin-top: auto; color: var(--ink-3); }
+.rail-bottom { margin-top: auto; }
+.rail-hide { color: var(--ink-3); }
+.rail-divider { width: 32px; height: 1px; background: var(--line); margin: 6px 0; }
+
+/* ── Visualisation panel: mapping tabs + accordion of mapping-specific groups ── */
+.mapping-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 4px;
+    margin-top: -14px;
+    background: var(--paper-2);
+    border-radius: 13px;
+}
+.mapping-tab {
+    height: 58px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+.mapping-tab input { position: absolute; opacity: 0; pointer-events: none; }
+.mapping-tab svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.mapping-tab:hover { color: var(--ink); }
+.mapping-tab:has(input:checked) { background: var(--ink); color: var(--paper); }
+.mapping-tab:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.acc-list { display: flex; flex-direction: column; margin-top: -6px; }
+.acc { border-top: 1px solid var(--line); }
+.acc:last-of-type { border-bottom: 1px solid var(--line); }
+.acc-head {
+    width: 100%;
+    min-height: 50px;
+    padding: 0 2px;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+}
+.acc-chev { width: 16px; height: 16px; flex: 0 0 16px; fill: none; stroke: var(--ink-2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .18s var(--ease); transform: rotate(-90deg); }
+.acc.is-open .acc-chev { transform: none; }
+.acc-title { font-size: 15px; font-weight: 600; flex: 1; }
+.acc-summary { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
+.acc-body { display: none; flex-direction: column; gap: 22px; padding: 6px 2px 24px 28px; }
+.acc.is-open .acc-body { display: flex; }
+
+.sub-head {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: -10px;
+}
+.sub-group { display: flex; flex-direction: column; gap: 24px; padding-top: 18px; border-top: 1px solid var(--line); }
 
 /* Whole sidebar (rail + panel) hidden */
 .rail { transition: margin-left .25s var(--ease); }

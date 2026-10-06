@@ -15,15 +15,12 @@
     <nav class="rail" aria-label="Settings">
         <div class="rail-mark" aria-hidden="true">S</div>
 
-        <button class="rail-btn is-active" data-panel="mapping" aria-label="Mapping" title="Mapping">
+        <button class="rail-btn is-active" data-panel="vis" aria-label="Visualisation" title="Visualisation">
             <svg viewBox="0 0 24 24"><path d="M3 15c2-6 4-6 5.5 0s3.5 6 5.5 0 3.5-6 7-3"/></svg>
-            <span>Mapping</span>
+            <span>Visual</span>
         </button>
-        <button class="rail-btn" data-panel="frequency" aria-label="Frequency" title="Frequency">
-            <svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 15l3-5 3 3 5-7"/></svg>
-            <span>Freq</span>
-        </button>
-        <button class="rail-btn" data-panel="colour" aria-label="Visualisation colour" title="Visualisation colour">
+        <div class="rail-divider" aria-hidden="true"></div>
+        <button class="rail-btn" data-panel="colour" aria-label="Colour" title="Colour">
             <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-.9 2-1.8 0-1-.9-1.6-.2-2.6.8-1 2.6-.4 4-1.1 1.6-.8 2.2-2.4 2.2-3.9A8.4 8.4 0 0 0 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="11" cy="7.5" r="1"/><circle cx="15.5" cy="8.5" r="1"/></svg>
             <span>Colour</span>
         </button>
@@ -35,11 +32,11 @@
             <svg viewBox="0 0 24 24"><path d="M4 18V9M9 18V5M14 18v-7M19 18V8"/></svg>
             <span>Signal</span>
         </button>
-        <button class="rail-btn" data-panel="presets" aria-label="Presets" title="Presets">
+
+        <button class="rail-btn rail-bottom" data-panel="presets" aria-label="Presets" title="Presets">
             <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
             <span>Presets</span>
         </button>
-
         <button class="rail-btn rail-hide" id="sidebarHideBtn" aria-label="Hide sidebar" title="Hide sidebar (⌘B / Ctrl+B)">
             <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9 4.5v15M15.5 10l-2 2 2 2"/></svg>
             <span>Hide</span>
@@ -52,152 +49,174 @@
             <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
         </button>
 
-        <section class="panel-section is-active" data-section="mapping">
-            <h2>Mapping</h2>
-            <p class="panel-hint">What the voice is turned into. Signal, frequency, colour and time settings are shared by all mappings.</p>
-            <fieldset class="field">
-                <legend>Drawn on the canvas</legend>
-                <label class="choice">
+        <section class="panel-section is-active" data-section="vis">
+            <h2>Visualisation</h2>
+            <span class="field-label">Mapping</span>
+            <div class="mapping-tabs" role="radiogroup" aria-label="Mapping">
+                <label class="mapping-tab">
                     <input type="radio" name="mapping-radio" value="spec2d" checked>
-                    <span>2D spectrogram</span>
+                    <svg viewBox="0 0 24 24"><path d="M3 17c3-8 5-8 7 0s4 8 7 0 3-6 4-6"/></svg>
+                    <span>2D</span>
                 </label>
-                <label class="choice">
+                <label class="mapping-tab">
                     <input type="radio" name="mapping-radio" value="spec3d">
-                    <span>3D spectrogram</span>
+                    <svg viewBox="0 0 24 24"><path d="M3 16l5-6 4 4 4-7 5 9"/><path d="M3 20h18"/></svg>
+                    <span>3D</span>
                 </label>
-                <label class="choice">
+                <label class="mapping-tab">
                     <input type="radio" name="mapping-radio" value="pitch">
-                    <span>Pitch contour × k</span>
+                    <svg viewBox="0 0 24 24"><path d="M3 14c2 0 3-6 5-6s3 8 5 8 3-6 5-6 2 2 3 2"/></svg>
+                    <span>Pitch × k</span>
                 </label>
-            </fieldset>
-
-            <div class="mapping-params" data-for="spec2d">
-                <span class="mapping-params-title">2D spectrogram</span>
-            <div class="field">
-                <span class="field-label">Scroll direction</span>
-                <div class="segmented-control" style="--sc-count: 2">
-                    <input type="radio" name="direction-radio" id="direction-left" value="left" checked>
-                    <label for="direction-left">← Leftward</label>
-                    <input type="radio" name="direction-radio" id="direction-right" value="right">
-                    <label for="direction-right">Rightward →</label>
-                    <span class="selection-indicator"></span>
-                </div>
             </div>
-            </div>
-
-            <div class="mapping-params" data-for="spec3d" hidden>
-                <span class="mapping-params-title">3D spectrogram</span>
-            <div class="field">
-                <span class="field-label">Style</span>
-                <div class="segmented-control" style="--sc-count: 2">
-                    <input type="radio" name="style3d-radio" id="style3d-surface" value="surface" checked>
-                    <label for="style3d-surface">Surface</label>
-                    <input type="radio" name="style3d-radio" id="style3d-wireframe" value="wireframe">
-                    <label for="style3d-wireframe">Wireframe</label>
-                    <span class="selection-indicator"></span>
-                </div>
-            </div>
-            <div class="field">
-                <span class="field-label">Camera</span>
-                <div class="segmented-control" style="--sc-count: 4">
-                    <input type="radio" name="camera3d-radio" id="cam3d-front" value="front" checked>
-                    <label for="cam3d-front">Front</label>
-                    <input type="radio" name="camera3d-radio" id="cam3d-side" value="side">
-                    <label for="cam3d-side">Side</label>
-                    <input type="radio" name="camera3d-radio" id="cam3d-oblique" value="oblique">
-                    <label for="cam3d-oblique">Oblique</label>
-                    <input type="radio" name="camera3d-radio" id="cam3d-top" value="top">
-                    <label for="cam3d-top">Top</label>
-                    <span class="selection-indicator"></span>
-                </div>
-                <p class="panel-hint">Front: looking down over the newest sound, history recedes (as in Chrome Music Lab). Drag on the canvas to orbit, scroll to zoom; pick a preset again to reset.</p>
-            </div>
-            <label class="toggle" id="lighting3dRow">
-                <span>Surface lighting</span>
-                <input type="checkbox" id="lighting3dCheck">
-            </label>
-            <div class="field" id="heightScale3dRow">
-                <div class="field-row"><label for="heightScale3d" class="field-label">Height</label><span class="mono" id="heightScale3dValue">0.60</span></div>
-                <input type="range" id="heightScale3d" min="0.1" max="1.5" step="0.05" value="0.6" class="slider">
-            </div>
-            </div>
-
-            <div class="mapping-params" data-for="pitch" hidden>
-                <span class="mapping-params-title">Pitch contour × k</span>
-                <div class="field">
-                    <div class="field-row"><label for="pitchK" class="field-label">Deviation gain k</label><span class="mono" id="pitchKValue">×2.00</span></div>
-                    <input type="range" id="pitchK" min="0" max="6" step="0.05" value="2" class="slider">
-                    <p class="panel-hint">Shown f₀ = ref · (f₀ / ref)<sup>k</sup>: deviations from the reference are scaled k times in cents. k = 1 is the raw contour, k = 0 the reference alone.</p>
-                </div>
-                <div class="field">
-                    <span class="field-label">Reference</span>
-                    <div class="segmented-control" style="--sc-count: 2">
-                        <input type="radio" name="pitchref-radio" id="pitchref-moving" value="moving" checked>
-                        <label for="pitchref-moving">Moving average</label>
-                        <input type="radio" name="pitchref-radio" id="pitchref-utterance" value="utterance">
-                        <label for="pitchref-utterance">Utterance mean</label>
-                        <span class="selection-indicator"></span>
+            <div class="acc-list">
+            <section class="acc" data-acc="view" data-for="spec3d">
+                <button class="acc-head" aria-expanded="true">
+                    <svg class="acc-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+                    <span class="acc-title">View</span>
+                    <span class="acc-summary mono" data-summary="view"></span>
+                </button>
+                <div class="acc-body">
+                    <div class="field">
+                        <span class="field-label">Style</span>
+                        <div class="segmented-control" style="--sc-count: 2">
+                            <input type="radio" name="style3d-radio" id="style3d-surface" value="surface" checked>
+                            <label for="style3d-surface">Surface</label>
+                            <input type="radio" name="style3d-radio" id="style3d-wireframe" value="wireframe">
+                            <label for="style3d-wireframe">Wireframe</label>
+                            <span class="selection-indicator"></span>
+                        </div>
                     </div>
-                    <div id="pitchRefMsRow">
-                        <div class="field-row"><label for="pitchRefMs" class="field-sublabel">Averaging time</label><span class="mono" id="pitchRefMsValue">300 ms</span></div>
-                        <input type="range" id="pitchRefMs" min="50" max="1500" step="10" value="300" class="slider">
+                    <div class="field">
+                        <span class="field-label">Camera</span>
+                        <div class="segmented-control" style="--sc-count: 4">
+                            <input type="radio" name="camera3d-radio" id="cam3d-front" value="front" checked>
+                            <label for="cam3d-front">Front</label>
+                            <input type="radio" name="camera3d-radio" id="cam3d-side" value="side">
+                            <label for="cam3d-side">Side</label>
+                            <input type="radio" name="camera3d-radio" id="cam3d-oblique" value="oblique">
+                            <label for="cam3d-oblique">Oblique</label>
+                            <input type="radio" name="camera3d-radio" id="cam3d-top" value="top">
+                            <label for="cam3d-top">Top</label>
+                            <span class="selection-indicator"></span>
+                        </div>
+                        <p class="panel-hint">Front: looking down over the newest sound, history recedes (as in Chrome Music Lab). Drag on the canvas to orbit, scroll to zoom; pick a preset again to reset.</p>
                     </div>
-                    <p class="panel-hint">Moving average follows the slow trend, so mainly modulation (vibrato, jitter) is amplified. Utterance mean amplifies the whole intonation contour.</p>
+                    <div class="field" id="heightScale3dRow">
+                        <div class="field-row"><label for="heightScale3d" class="field-label">Height</label><span class="mono" id="heightScale3dValue">0.60</span></div>
+                        <input type="range" id="heightScale3d" min="0.1" max="1.5" step="0.05" value="0.6" class="slider">
+                    </div>
+                    <label class="toggle" id="lighting3dRow">
+                        <span>Surface lighting</span>
+                        <input type="checkbox" id="lighting3dCheck">
+                    </label>
                 </div>
-                <div class="field">
-                    <span class="field-label">Pitch axis (log)</span>
-                    <div class="field-row"><label for="pitchMin" class="field-sublabel">Lowest</label><span class="mono" id="pitchMinValue">70 Hz</span></div>
-                    <input type="range" id="pitchMin" min="40" max="300" step="5" value="70" class="slider">
-                    <div class="field-row"><label for="pitchMax" class="field-sublabel">Highest</label><span class="mono" id="pitchMaxValue">500 Hz</span></div>
-                    <input type="range" id="pitchMax" min="150" max="1500" step="10" value="500" class="slider">
-                    <p class="panel-hint">Also the f₀ search range. FFT 2048 or larger (Signal panel) is needed below ~95 Hz.</p>
+            </section>
+            <section class="acc" data-acc="freq" data-for="spec2d spec3d">
+                <button class="acc-head" aria-expanded="true">
+                    <svg class="acc-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+                    <span class="acc-title">Frequency</span>
+                    <span class="acc-summary mono" data-summary="freq"></span>
+                </button>
+                <div class="acc-body">
+                    <div class="field" data-applies="spec2d spec3d">
+                        <span class="field-label">Axis</span>
+                        <div class="segmented-control" style="--sc-count: 2">
+                            <input type="radio" name="scale-radio" id="scale-linear" value="linear" checked>
+                            <label for="scale-linear">Linear</label>
+                            <input type="radio" name="scale-radio" id="scale-log" value="log">
+                            <label for="scale-log">Log</label>
+                            <span class="selection-indicator"></span>
+                        </div>
+                    </div>
+                    <div class="field" data-applies="spec2d spec3d">
+                        <div class="field-row">
+                            <span class="field-label">Range</span>
+                            <span class="mono"><span id="minFreqLabel">0 Hz</span> – <span id="maxFreqLabel">4000 Hz</span></span>
+                        </div>
+                        <div class="dual-slider">
+                            <div class="slider-track"></div>
+                            <div class="slider-range"></div>
+                            <input type="range" id="minFreq" min="0" max="1000" value="0" class="range-slider-input" aria-label="Minimum frequency">
+                            <input type="range" id="maxFreq" min="0" max="1000" value="1000" class="range-slider-input" aria-label="Maximum frequency">
+                        </div>
+                        <div class="field-row">
+                            <label for="maxFreqInput" class="field-label">Slider ceiling</label>
+                            <span class="number-input"><input type="number" id="maxFreqInput" min="0" max="22050" value="4000"><span>Hz</span></span>
+                        </div>
+                    </div>
+                    <div class="field" data-applies="spec2d spec3d">
+                        <span class="field-label">Quick ranges</span>
+                        <div class="chip-row">
+                            <button class="preset-btn chip" data-preset="default">Speech 0–4 kHz</button>
+                            <button class="preset-btn chip" data-preset="music">Music 20–20 kHz</button>
+                        </div>
+                    </div>
                 </div>
-                <label class="toggle"><span>Raw f₀ (dotted)</span><input type="checkbox" id="pitchShowRaw" checked></label>
-                <label class="toggle"><span>Spectrogram underneath</span><input type="checkbox" id="pitchUnderlay" checked></label>
-                <label class="toggle"><span>Line colour</span><input type="color" id="pitchColor" value="#FF6A3D" class="color-input"></label>
-            </div>
-        </section>
-
-        <section class="panel-section" data-section="frequency">
-            <h2>Frequency</h2>
-            <div class="field" data-applies="spec2d spec3d">
-                <span class="field-label">Axis</span>
-                <div class="segmented-control" style="--sc-count: 2">
-                    <input type="radio" name="scale-radio" id="scale-linear" value="linear" checked>
-                    <label for="scale-linear">Linear</label>
-                    <input type="radio" name="scale-radio" id="scale-log" value="log">
-                    <label for="scale-log">Log</label>
-                    <span class="selection-indicator"></span>
+            </section>
+            <section class="acc" data-acc="contour" data-for="pitch">
+                <button class="acc-head" aria-expanded="true">
+                    <svg class="acc-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+                    <span class="acc-title">Contour</span>
+                    <span class="acc-summary mono" data-summary="contour"></span>
+                </button>
+                <div class="acc-body">
+                        <div class="field">
+                            <div class="field-row"><label for="pitchK" class="field-label">Deviation gain k</label><span class="mono" id="pitchKValue">×2.00</span></div>
+                            <input type="range" id="pitchK" min="0" max="6" step="0.05" value="2" class="slider">
+                            <p class="panel-hint">Shown f₀ = ref · (f₀ / ref)<sup>k</sup>: deviations from the reference are scaled k times in cents. k = 1 is the raw contour, k = 0 the reference alone.</p>
+                        </div>
+                        <div class="field">
+                            <span class="field-label">Reference</span>
+                            <div class="segmented-control" style="--sc-count: 2">
+                                <input type="radio" name="pitchref-radio" id="pitchref-moving" value="moving" checked>
+                                <label for="pitchref-moving">Moving average</label>
+                                <input type="radio" name="pitchref-radio" id="pitchref-utterance" value="utterance">
+                                <label for="pitchref-utterance">Utterance mean</label>
+                                <span class="selection-indicator"></span>
+                            </div>
+                            <div id="pitchRefMsRow">
+                                <div class="field-row"><label for="pitchRefMs" class="field-sublabel">Averaging time</label><span class="mono" id="pitchRefMsValue">300 ms</span></div>
+                                <input type="range" id="pitchRefMs" min="50" max="1500" step="10" value="300" class="slider">
+                            </div>
+                            <p class="panel-hint">Moving average follows the slow trend, so mainly modulation (vibrato, jitter) is amplified. Utterance mean amplifies the whole intonation contour.</p>
+                        </div>
                 </div>
-            </div>
-            <div class="field" data-applies="spec2d spec3d">
-                <div class="field-row">
-                    <span class="field-label">Range</span>
-                    <span class="mono"><span id="minFreqLabel">0 Hz</span> – <span id="maxFreqLabel">4000 Hz</span></span>
+            </section>
+            <section class="acc" data-acc="paxis" data-for="pitch">
+                <button class="acc-head" aria-expanded="true">
+                    <svg class="acc-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+                    <span class="acc-title">Pitch axis</span>
+                    <span class="acc-summary mono" data-summary="paxis"></span>
+                </button>
+                <div class="acc-body">
+                        <div class="field">
+                                                <div class="field-row"><label for="pitchMin" class="field-sublabel">Lowest</label><span class="mono" id="pitchMinValue">70 Hz</span></div>
+                            <input type="range" id="pitchMin" min="40" max="300" step="5" value="70" class="slider">
+                            <div class="field-row"><label for="pitchMax" class="field-sublabel">Highest</label><span class="mono" id="pitchMaxValue">500 Hz</span></div>
+                            <input type="range" id="pitchMax" min="150" max="1500" step="10" value="500" class="slider">
+                            <p class="panel-hint">Also the f₀ search range. FFT 2048 or larger (Signal panel) is needed below ~95 Hz.</p>
+                        </div>
                 </div>
-                <div class="dual-slider">
-                    <div class="slider-track"></div>
-                    <div class="slider-range"></div>
-                    <input type="range" id="minFreq" min="0" max="1000" value="0" class="range-slider-input" aria-label="Minimum frequency">
-                    <input type="range" id="maxFreq" min="0" max="1000" value="1000" class="range-slider-input" aria-label="Maximum frequency">
+            </section>
+            <section class="acc" data-acc="layers" data-for="pitch">
+                <button class="acc-head" aria-expanded="true">
+                    <svg class="acc-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+                    <span class="acc-title">Layers</span>
+                    <span class="acc-summary mono" data-summary="layers"></span>
+                </button>
+                <div class="acc-body">
+                        <label class="toggle"><span>Raw f₀ (dotted)</span><input type="checkbox" id="pitchShowRaw" checked></label>
+                        <label class="toggle"><span>Spectrogram underneath</span><input type="checkbox" id="pitchUnderlay" checked></label>
+                        <label class="toggle"><span>Line colour</span><input type="color" id="pitchColor" value="#FF6A3D" class="color-input"></label>
                 </div>
-                <div class="field-row">
-                    <label for="maxFreqInput" class="field-label">Slider ceiling</label>
-                    <span class="number-input"><input type="number" id="maxFreqInput" min="0" max="22050" value="4000"><span>Hz</span></span>
-                </div>
-            </div>
-            <div class="field" data-applies="spec2d spec3d">
-                <span class="field-label">Quick ranges</span>
-                <div class="chip-row">
-                    <button class="preset-btn chip" data-preset="default">Speech 0–4 kHz</button>
-                    <button class="preset-btn chip" data-preset="music">Music 20–20 kHz</button>
-                </div>
+            </section>
             </div>
         </section>
 
         <section class="panel-section" data-section="colour">
-            <h2>Visualisation colour</h2>
-            <p class="panel-hint">Applies to the canvas only — the interface stays light.</p>
+            <h2>Colour</h2>
+            <p class="panel-hint">Shared by all mappings · showing for <b class="scope-name">2D spectrogram</b>. Applies to the canvas only — the interface stays light.</p>
             <fieldset class="field">
                 <legend>Colormap</legend>
                 <label class="choice colormap-option">
@@ -239,9 +258,9 @@
             </div>
         </section>
 
-
         <section class="panel-section" data-section="time">
             <h2>Time</h2>
+            <p class="panel-hint">Shared by all mappings · showing for <b class="scope-name">2D spectrogram</b>.</p>
             <div class="field">
                 <span class="field-label">Speed</span>
                 <div class="segmented-control" style="--sc-count: 3">
@@ -253,10 +272,20 @@
                     <label for="speed-fast">Fast</label>
                     <span class="selection-indicator"></span>
                 </div>
-                <p class="panel-hint">How much space one second takes: across the screen in 2D, in depth in 3D.</p>
+                <p class="panel-hint">How much space one second takes: across the screen in 2D and Pitch × k, in depth in 3D.</p>
             </div>
-            <div class="field" id="fade3dRow">
-                <span class="field-label">Fade (3D)</span>
+            <div class="field" data-applies="spec2d pitch">
+                <span class="field-label">Direction</span>
+                <div class="segmented-control" style="--sc-count: 2">
+                    <input type="radio" name="direction-radio" id="direction-left" value="left" checked>
+                    <label for="direction-left">← Leftward</label>
+                    <input type="radio" name="direction-radio" id="direction-right" value="right">
+                    <label for="direction-right">Rightward →</label>
+                    <span class="selection-indicator"></span>
+                </div>
+            </div>
+            <div class="field" id="fade3dRow" data-applies="spec3d">
+                <span class="field-label">Fade</span>
                 <div class="segmented-control" style="--sc-count: 2">
                     <input type="radio" name="fade3d-radio" id="fade3d-distance" value="distance" checked>
                     <label for="fade3d-distance">By distance</label>
@@ -274,7 +303,9 @@
         </section>
 
         <section class="panel-section" data-section="signal">
-            <h2>Signal analysis</h2>
+            <h2>Signal</h2>
+            <p class="panel-hint">Shared by all mappings · showing for <b class="scope-name">2D spectrogram</b>.</p>
+            <span class="sub-head">Analysis window</span>
             <div class="field">
                 <span class="field-label">FFT size</span>
                 <div class="segmented-control" style="--sc-count: 3">
@@ -286,8 +317,10 @@
                     <label for="fft-high">4096</label>
                     <span class="selection-indicator"></span>
                 </div>
-                <p class="panel-hint">Larger = finer frequency detail, slower response.</p>
+                <p class="panel-hint">Larger = finer frequency detail, slower response. Also the pitch tracker’s window: 2048 reaches f₀ ≈ 50 Hz, 1024 only ≈ 95 Hz.</p>
             </div>
+            <span class="sub-head">Spectrum</span>
+            <p class="panel-hint" data-applies="pitch">With Pitch × k these only affect the spectrogram underneath the contour.</p>
             <div class="field">
                 <span class="field-label">Level range (dB)</span>
                 <div class="field-row"><label for="maxDb" class="field-sublabel">Ceiling — louder is clipped</label><span class="mono" id="maxDbValue">−30 dB</span></div>
@@ -305,6 +338,19 @@
                 <div class="field-row"><label for="smoothingMs" class="field-label">Smoothing</label><span class="mono" id="smoothingMsValue">10 ms</span></div>
                 <input type="range" id="smoothingMs" min="0" max="150" step="1" value="10" class="slider">
                 <p class="panel-hint">Spectral time constant, independent of the screen refresh rate.</p>
+            </div>
+            <div class="sub-group" data-applies="pitch">
+                <span class="sub-head">Pitch tracking</span>
+                <div class="field">
+                    <div class="field-row"><label for="pitchVoicingDb" class="field-sublabel">Voicing level</label><span class="mono" id="pitchVoicingDbValue">−55 dBFS</span></div>
+                    <input type="range" id="pitchVoicingDb" min="-80" max="-25" step="1" value="-55" class="slider">
+                    <p class="panel-hint">Quieter frames count as unvoiced (no contour).</p>
+                </div>
+                <div class="field">
+                    <div class="field-row"><label for="pitchThreshold" class="field-sublabel">Periodicity threshold</label><span class="mono" id="pitchThresholdValue">0.15</span></div>
+                    <input type="range" id="pitchThreshold" min="0.05" max="0.40" step="0.01" value="0.15" class="slider">
+                    <p class="panel-hint">YIN threshold: lower = stricter — fewer, but more reliable f₀ values.</p>
+                </div>
             </div>
         </section>
 
