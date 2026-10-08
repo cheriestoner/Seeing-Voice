@@ -51,6 +51,8 @@ class SeeingSound {
             spec3dLighting: false,  // shading on the surface style
             // Pitch contour × k (see render/pitchContour.js)
             pitchStyle: 'ribbon',   // 'line' | 'ribbon' | 'plume' | 'flight' (comet styles)
+            pitchTimeMode: 'scroll', // 'scroll' | 'sweep' (heart-monitor: fixed screen, wrapping write position)
+            pitchSweepS: 4,          // sweep: seconds across the screen
             pitchK: 2.0,
             pitchRef: 'moving',     // 'moving' (moving average) | 'utterance' (utterance mean)
             pitchRefMs: 300,        // moving-average time constant
@@ -322,7 +324,8 @@ class SeeingSound {
         // Newest data at the edge the scroll comes from; with leftward scroll
         // that is the right edge, so stop short of the Hz label column.
         const gutter = Math.min(this._labelGutterPx || 0, canvasWidth * 0.5);
-        const flip = this.settings.scrollDirection === 'right';
+        const sweep = this.settings.mapping === 'pitch' && this.settings.pitchTimeMode === 'sweep';
+        const flip = !sweep && this.settings.scrollDirection === 'right';   // a sweep always writes left → right
         const dataLo = flip ? gutter / canvasWidth : 0;          // in shader (flipped) coords
         const dataHi = flip ? 1 : 1 - gutter / canvasWidth;
         const dataPx = (dataHi - dataLo) * canvasWidth;
@@ -342,6 +345,9 @@ class SeeingSound {
             newestCol: ((this._writeCount - 1) % this.texWidth + this.texWidth) % this.texWidth,
             colFrac: Math.min(Math.max(pos - (this._writeCount - 1), 0), 0.999),
             persistence: persistenceSeconds(this.settings.trailLength),
+            flip: flip,
+            sweep: sweep,
+            sweepCols: Math.max(2, Math.round(this.settings.pitchSweepS * COLUMN_RATE)),
             refLevel: Math.max(this._refLevel || 0, MIN_REF_LEVEL),
             scaleMode: this.settings.scale === 'log' ? 1 : 0,
             colormapMode: { experimental: 0, viridis: 1, greyscale: 2, reversed_greyscale: 3 }[this.settings.colormap] ?? 1,
@@ -353,8 +359,9 @@ class SeeingSound {
             // glow has room ahead of it; the time axis (and the spectrogram
             // underneath) end at the head. The overlay still clips to the full area.
             const st = this.settings.pitchStyle;
-            const inset = (st === 'ribbon' || st === 'plume')
+            const inset = !sweep && (st === 'ribbon' || st === 'plume')
                 ? Math.min(Math.max(canvasWidth * 0.08, 72), 140, dataPx * 0.3) / canvasWidth : 0;
+            shared.newestMod = ((this._writeCount - 1) % shared.sweepCols + shared.sweepCols) % shared.sweepCols;
             const pitchSh = { ...shared, clipLo: dataLo, clipHi: dataHi,
                 dataHi: dataHi - inset };          // newest is at dataHi in shader coords either way
             pitchSh.visibleWidthRatio = ((pitchSh.dataHi - pitchSh.dataLo) * canvasWidth / scrollSpeed) / this.texWidth;

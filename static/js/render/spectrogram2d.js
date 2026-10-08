@@ -42,6 +42,13 @@ class Spectrogram2DMethods {
             uniform float u_persistence;
             uniform float u_ref_level;     // recent peak level the fade is measured against     // s for a full-scale level to fade to nothing
             uniform float u_boost_intensity; // flash brightness at cursor edge
+            // Sweep (heart-monitor) mode: the screen holds u_sweep_cols columns;
+            // slot j shows the column last written there (this pass or the one before)
+            uniform int u_sweep;
+            uniform float u_sweep_cols;
+            uniform float u_newest_mod;    // (newest absolute column) mod u_sweep_cols
+            uniform float u_newest_x;      // texture x of the newest column's centre
+            uniform float u_tex_width;
             varying vec2 v_uv;
 
             ${FREQ_GLSL}
@@ -60,10 +67,21 @@ class Spectrogram2DMethods {
                     return;
                 }
 
-                // X mapping: t = 1 newest (at the edge), t = 0 oldest
                 float t = (uvx - u_data_lo) / (u_data_hi - u_data_lo);
-                float x = u_offset + (t - 1.0) * u_visible_width;
-                x = fract(x);
+                float x;
+                float age;
+                if (u_sweep == 1) {
+                    // columns back from the newest; wraps to the previous pass
+                    float dc = u_newest_mod + 0.5 - t * u_sweep_cols;
+                    if (dc < 0.0) dc += u_sweep_cols;
+                    dc = max(dc, 0.5);
+                    x = fract(u_newest_x - (dc - 0.5) / u_tex_width);
+                    age = (dc - 0.5) / ${COLUMN_RATE.toFixed(1)};
+                } else {
+                    // X mapping: t = 1 newest (at the edge), t = 0 oldest
+                    x = fract(u_offset + (t - 1.0) * u_visible_width);
+                    age = (1.0 - t) * u_visible_seconds;
+                }
 
                 // Y mapping (Frequency Zoom) — shared helper
                 float y = freqTexY(v_uv.y);
@@ -72,14 +90,14 @@ class Spectrogram2DMethods {
 
                 // Ageing: every component loses level at the same rate, so it
                 // fades out by its own loudness (quiet first), not by a mask
-                float age = (1.0 - t) * u_visible_seconds;
                 amp -= age / u_persistence * u_ref_level * (1.0 - u_threshold);
 
                 vec3 color = getColor(v_uv.y, amp);
 
                 // Spawn flash — brighten or darken at the newest data edge depending on colormap
                 if (amp >= u_threshold) {
-                    float distFromEdge = (1.0 - t) * (u_data_hi - u_data_lo);
+                    float distFromEdge = age * ${COLUMN_RATE.toFixed(1)} / u_sweep_cols * (u_data_hi - u_data_lo);
+                    if (u_sweep == 0) distFromEdge = (1.0 - t) * (u_data_hi - u_data_lo);
                     float boostFactor = u_boost_intensity * exp(-distFromEdge * 40.0);
                     if (u_colormap == 3) {
                         // Ink: deepen the ink by the same factor the other maps brighten by.
@@ -92,7 +110,7 @@ class Spectrogram2DMethods {
                 }
 
                 // Only a thin feather at the very left edge of the window
-                float fadeAlpha = smoothstep(0.0, 0.03, t);
+                float fadeAlpha = u_sweep == 1 ? 1.0 : smoothstep(0.0, 0.03, t);
 
                 if (u_bg_mode == 1 || (u_bg_mode == 0 && u_colormap == 3)) {
                     float dataAlpha = (u_soft_edge == 1 || u_colormap == 3)
@@ -171,7 +189,12 @@ class Spectrogram2DMethods {
         gl.uniform1f(gl.getUniformLocation(p, 'u_data_hi'), s.dataHi);
         gl.uniform1i(gl.getUniformLocation(p, 'u_scale_mode'), s.scaleMode);
         gl.uniform1i(gl.getUniformLocation(p, 'u_colormap'), s.colormapMode);
-        gl.uniform1i(gl.getUniformLocation(p, 'u_flip'), this.settings.scrollDirection === 'right' ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(p, 'u_flip'), (s.flip ?? this.settings.scrollDirection === 'right') ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(p, 'u_sweep'), s.sweep ? 1 : 0);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_sweep_cols'), s.sweepCols || 1);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_newest_mod'), s.newestMod || 0);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_newest_x'), (s.newestCol + 0.5) / this.texWidth);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_tex_width'), this.texWidth);
         const bgMode = { dark: 0, transparent: 1, white: 2 }[this.settings.backgroundStyle] ?? 0;
         gl.uniform1i(gl.getUniformLocation(p, 'u_bg_mode'), bgMode);
         gl.uniform1i(gl.getUniformLocation(p, 'u_soft_edge'), this.settings.softEdge ? 1 : 0);

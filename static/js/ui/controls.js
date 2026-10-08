@@ -253,6 +253,20 @@ class ControlsMethods {
                 this.updateSegmentedControlIndicators();
             });
         });
+        document.querySelectorAll('input[name="timemode-radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.settings.pitchTimeMode = e.target.value;
+                this.syncTimeModeUI();
+                if (this._pitch) this._pitch.sparks.length = 0;
+                this.updateSegmentedControlIndicators();
+                requestAnimationFrame(() => this.updateLabelGutter && this.updateLabelGutter());
+            });
+        });
+        document.getElementById('pitchSweepS').addEventListener('input', (e) => {
+            this.settings.pitchSweepS = +e.target.value;
+            document.getElementById('pitchSweepSValue').textContent = `${(+e.target.value).toFixed(1)} s`;
+            if (this._pitch) this._pitch.sparks.length = 0;
+        });
         document.querySelectorAll('input[name="pitchstyle-radio"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
                 this.settings.pitchStyle = e.target.value;
@@ -410,6 +424,7 @@ class ControlsMethods {
         update('fade3d-radio', this.settings.spec3dFade);
         update('pitchref-radio', this.settings.pitchRef);
         update('pitchstyle-radio', this.settings.pitchStyle);
+        update('timemode-radio', this.settings.pitchTimeMode);
 
         if (this.updateStatusSummary) this.updateStatusSummary();
     }

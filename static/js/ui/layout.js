@@ -145,6 +145,8 @@ class LayoutMethods {
         });
         document.querySelectorAll('.scope-name').forEach(el => { el.textContent = MAPPING_NAMES[mapping]; });
 
+        this.syncTimeModeUI();
+
         const lightRow = document.getElementById('lighting3dRow');
         if (lightRow) lightRow.hidden = s.spec3dStyle !== 'surface';
 
@@ -155,6 +157,27 @@ class LayoutMethods {
         this.updateSegmentedControlIndicators();
         if (!opts.silent) this.updateStatusSummary();
         requestAnimationFrame(() => this.updateLabelGutter && this.updateLabelGutter());
+    }
+
+    /**
+     * Pitch × k time mode: Sweep replaces Speed and Direction with a sweep
+     * time (runs after the data-applies pass in setMapping).
+     */
+    syncTimeModeUI() {
+        const s = this.settings;
+        const sweep = s.mapping === 'pitch' && s.pitchTimeMode === 'sweep';
+        const flight = s.pitchStyle === 'flight';
+        const sweepRow = document.getElementById('sweepTimeRow');
+        if (sweepRow) sweepRow.hidden = !sweep;
+        const speed = document.getElementById('speedField');
+        if (speed) speed.hidden = sweep;
+        const dirEl = document.getElementById('directionField');
+        if (dirEl && sweep) dirEl.hidden = true;
+        else if (dirEl) dirEl.hidden = !['spec2d', 'pitch'].includes(s.mapping);
+        const hint = document.getElementById('timeModeHint');
+        if (hint) hint.textContent = flight && s.mapping === 'pitch'
+            ? 'Free flight has no time axis, so Scroll / Sweep does not change it.'
+            : 'Scroll moves the history across the screen. Sweep keeps the screen still, like a heart monitor: new pitch and spectrum are written left to right and wrap round over the last pass.';
     }
 
     updateStatusSummary() {
@@ -176,12 +199,12 @@ class LayoutMethods {
         if (!strip) return;
         const parts = [
             MAPPING_NAMES[s.mapping] + (s.mapping === 'spec3d' ? ` (${s.spec3dStyle}, ${s.spec3dCamera}, fade ${s.spec3dFade})`
-                : s.mapping === 'pitch' ? ` (${s.pitchStyle}, k ${(+s.pitchK).toFixed(2)}, ref ${s.pitchRef === 'moving' ? s.pitchRefMs + ' ms' : 'utterance'})` : ''),
+                : s.mapping === 'pitch' ? ` (${s.pitchStyle}${s.pitchTimeMode === 'sweep' ? `, sweep ${(+s.pitchSweepS).toFixed(1)} s` : ''}, k ${(+s.pitchK).toFixed(2)}, ref ${s.pitchRef === 'moving' ? s.pitchRefMs + ' ms' : 'utterance'})` : ''),
             `FFT ${s.fftSize}`,
             s.mapping === 'pitch' ? `Log ${s.pitchMin}–${s.pitchMax} Hz` : `${s.scale === 'log' ? 'Log' : 'Lin'} ${s.minFreq}–${s.maxFreq} Hz`,
             `${s.minDb}…${s.maxDb} dB`,
             `${COLORMAP_NAMES[s.colormap] || s.colormap} on ${GROUND_NAMES[s.backgroundStyle] || s.backgroundStyle}`,
-            `${s.scrollSpeed} ${s.scrollDirection === 'right' ? '→' : '←'}`,
+            s.mapping === 'pitch' && s.pitchTimeMode === 'sweep' ? 'sweep →' : `${s.scrollSpeed} ${s.scrollDirection === 'right' ? '→' : '←'}`,
             `smooth ${s.smoothingMs} ms · persist ${persistenceSeconds(s.trailLength).toFixed(1)} s`,
         ];
         if (s.noiseThreshold > 0) parts.push(`threshold ${s.noiseThreshold}%`);

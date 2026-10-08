@@ -18,13 +18,17 @@
 //            drift back with the scroll and diffuse
 //   flight — comet in a pitch × loudness plane (no time axis); the tail is
 //            the head's own recent path
-// The tail lasts the shared Persistence time. The time-axis styles can sit
+// The tail lasts the shared Persistence time. Time mode (settings.pitchTimeMode):
+// 'scroll' moves the history across the screen; 'sweep' keeps the screen
+// still and writes at a position that wraps left → right like a heart
+// monitor (the spectrogram underneath does the same, see spectrogram2d.js). The time-axis styles can sit
 // over a dimmed spectrogram of the same pitch range.
 
 const PITCH_GAP_RESET_S = 0.25;   // an unvoiced gap longer than this starts a new utterance
 const PITCH_HEAD_HOLD_S = 0.15;   // the comet head fades out over this after voicing stops
 const PITCH_LOUD_RANGE_DB = 40;   // loudness 0…1 spans voicing level … +40 dB
 const PITCH_MAX_SPARKS = 6000;
+const PITCH_SWEEP_DRIFT_PX = 24;  // plume on a sweep: sparks drift back this many px/s
 const PITCH_STYLE_HINTS = {
     line: 'The shown f₀ as a line on the time axis.',
     ribbon: 'Comet: the head is the voice now (size and heat = loudness); the tail is the recent pitch, tapering and cooling over the Persistence time.',
@@ -140,6 +144,7 @@ class PitchMethods {
         show('pitchColorRow', st === 'line');
         show('pitchLayersHint', flight);
         if (st !== 'plume' && this._pitch) this._pitch.sparks.length = 0;
+        if (this.syncTimeModeUI) this.syncTimeModeUI();
     }
 
     /** Pitch axis (Hz) used by the overlay, the dimmed spectrogram and the labels. */
@@ -177,8 +182,12 @@ class PitchMethods {
             newest: this._writeCount - 1,
             pos: sh.pos,
             paper: s.backgroundStyle === 'white',
+            sweep: !!sh.sweep,
+            sweepCols: sh.sweepCols,
         };
-        g.nVis = Math.ceil((axHi - axLo) / g.pxPerCol) + 2;
+        // sweep: one pass of columns spans the time axis; nothing older is on screen
+        g.nVis = g.sweep ? g.sweepCols : Math.ceil((axHi - axLo) / g.pxPerCol) + 2;
+        g.axLo = axLo; g.axHi = axHi;
         const k = s.pitchK;
         g.shown = (i) => {
             const lf = P.lf[i], ref = P.ref[i];
@@ -225,8 +234,11 @@ class PitchMethods {
 
     // ── helpers shared by the styles ─────────────────────────────────────
 
-    /** x of column `c` on the scrolling time axis. */
-    _pitchX(g, c) { return g.x0 + g.dir * (g.pos - 1 - c) * g.pxPerCol; }
+    /** x of column `c` on the time axis (scrolling, or the fixed sweep slot). */
+    _pitchX(g, c) {
+        if (g.sweep) return g.axLo + (((c % g.sweepCols) + 0.5) / g.sweepCols) * (g.axHi - g.axLo);
+        return g.x0 + g.dir * (g.pos - 1 - c) * g.pxPerCol;
+    }
 
     _pitchSeg(ctx, a, b) { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
 
@@ -240,6 +252,8 @@ class PitchMethods {
             const i = c % this.texWidth;
             const v = valueOf(i);
             if (!Number.isFinite(v)) { prev = null; continue; }
+            // sweep: do not join the newest slot at the right edge to the left edge
+            if (g.sweep && (c + 1) % g.sweepCols === 0) prev = null;
             const p = { x: this._pitchX(g, c), y: g.yOf(v), c, i };
             if (prev) {
                 const ageS = (g.pos - 1 - c) / COLUMN_RATE;
@@ -354,13 +368,15 @@ class PitchMethods {
         for (let n = 0; n < sparks.length; n++) {
             const p = sparks[n];
             const lifeS = (g.pos - 1 - p.c) / COLUMN_RATE;
-            if (lifeS > p.max) continue;                         // dropped below
+            if (lifeS > p.max || (g.sweep && lifeS * COLUMN_RATE >= g.sweepCols)) continue;   // expired
             p.dy += p.vy * dt;
             p.vy = p.vy * Math.exp(-dt * 1.2) + (rand() - 0.5) * 30 * dt;
             sparks[w++] = p;
             if (lifeS < 0) continue;
             const a = lifeS / p.max;
-            const x = g.x0 + g.dir * lifeS * COLUMN_RATE * g.pxPerCol * p.speed;
+            const x = g.sweep
+                ? this._pitchX(g, Math.round(p.c)) - lifeS * PITCH_SWEEP_DRIFT_PX * p.speed
+                : g.x0 + g.dir * lifeS * COLUMN_RATE * g.pxPerCol * p.speed;
             const y = g.yOf(p.l) + p.dy;
             const col = this._pitchHeat(a, g.paper);
             ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${(g.paper ? 0.85 : 0.75) * (1 - a)})`;
