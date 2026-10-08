@@ -53,7 +53,7 @@ class SeeingSound {
             pitchStyle: 'ribbon',   // 'line' | 'ribbon' | 'plume' | 'flight' (comet styles)
             pitchTimeMode: 'sweep',  // 'scroll' | 'sweep' (heart-monitor: fixed screen, wrapping write position)
             pitchSweepS: 4,          // sweep: seconds across the screen
-            pitchK: 2.0,
+            pitchK: 1.0,
             pitchRef: 'moving',     // 'moving' (moving average) | 'utterance' (utterance mean)
             pitchRefMs: 300,        // moving-average time constant
             pitchMin: 70,           // pitch axis, Hz (log)
