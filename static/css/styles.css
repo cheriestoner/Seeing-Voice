@@ -52,6 +52,9 @@ button { cursor: pointer; }
 .app {
     display: flex;
     height: 100vh;
+    /* phones: 100vh includes the area under the browser's address/tool bars,
+       which hid the Start button; dvh is the height actually visible */
+    height: 100dvh;
     width: 100vw;
 }
 
