@@ -54,7 +54,7 @@
             <span class="field-label">Mapping</span>
             <div class="mapping-tabs" role="radiogroup" aria-label="Mapping">
                 <label class="mapping-tab">
-                    <input type="radio" name="mapping-radio" value="spec2d" checked>
+                    <input type="radio" name="mapping-radio" value="spec2d">
                     <svg viewBox="0 0 24 24"><path d="M3 17c3-8 5-8 7 0s4 8 7 0 3-6 4-6"/></svg>
                     <span>2D</span>
                 </label>
@@ -64,7 +64,7 @@
                     <span>3D</span>
                 </label>
                 <label class="mapping-tab">
-                    <input type="radio" name="mapping-radio" value="pitch">
+                    <input type="radio" name="mapping-radio" value="pitch" checked>
                     <svg viewBox="0 0 24 24"><path d="M3 14c2 0 3-6 5-6s3 8 5 8 3-6 5-6 2 2 3 2"/></svg>
                     <span>Pitch × k</span>
                 </label>
@@ -208,8 +208,8 @@
                         <div class="field">
                                                 <div class="field-row"><label for="pitchMin" class="field-sublabel">Lowest</label><span class="mono" id="pitchMinValue">70 Hz</span></div>
                             <input type="range" id="pitchMin" min="40" max="300" step="5" value="70" class="slider">
-                            <div class="field-row"><label for="pitchMax" class="field-sublabel">Highest</label><span class="mono" id="pitchMaxValue">500 Hz</span></div>
-                            <input type="range" id="pitchMax" min="150" max="1500" step="10" value="500" class="slider">
+                            <div class="field-row"><label for="pitchMax" class="field-sublabel">Highest</label><span class="mono" id="pitchMaxValue">1000 Hz</span></div>
+                            <input type="range" id="pitchMax" min="150" max="1500" step="10" value="1000" class="slider">
                             <p class="panel-hint">Also the f₀ search range. FFT 2048 or larger (Signal panel) is needed below ~95 Hz.</p>
                         </div>
                 </div>
@@ -280,9 +280,9 @@
             <div class="field" data-applies="pitch">
                 <span class="field-label">Mode</span>
                 <div class="segmented-control" style="--sc-count: 2">
-                    <input type="radio" name="timemode-radio" id="timemode-scroll" value="scroll" checked>
+                    <input type="radio" name="timemode-radio" id="timemode-scroll" value="scroll">
                     <label for="timemode-scroll">Scroll</label>
-                    <input type="radio" name="timemode-radio" id="timemode-sweep" value="sweep">
+                    <input type="radio" name="timemode-radio" id="timemode-sweep" value="sweep" checked>
                     <label for="timemode-sweep">Sweep</label>
                     <span class="selection-indicator"></span>
                 </div>

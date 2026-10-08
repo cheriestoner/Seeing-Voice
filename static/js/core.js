@@ -44,20 +44,20 @@ class SeeingSound {
             trailLength: 0.5,    // persistence, see persistenceSeconds() (0.5 = 2 s)
             smoothingMs: 10,     // spectral smoothing time constant (≈ the old 0.2 per frame at 60 Hz)
             boostIntensity: 2.5, // flash brightness at cursor edge (0 = off)
-            mapping: 'spec2d',   // 'spec2d' | 'spec3d' | 'pitch'
+            mapping: 'pitch',   // 'spec2d' | 'spec3d' | 'pitch'
             spec3dStyle: 'surface', // 'surface' | 'wireframe'
             spec3dCamera: 'front',  // see CAMERA_PRESETS_3D
             spec3dFade: 'distance', // 'distance' (fade the far end) | 'persistence' (shared level ageing)
             spec3dLighting: false,  // shading on the surface style
             // Pitch contour × k (see render/pitchContour.js)
             pitchStyle: 'ribbon',   // 'line' | 'ribbon' | 'plume' | 'flight' (comet styles)
-            pitchTimeMode: 'scroll', // 'scroll' | 'sweep' (heart-monitor: fixed screen, wrapping write position)
+            pitchTimeMode: 'sweep',  // 'scroll' | 'sweep' (heart-monitor: fixed screen, wrapping write position)
             pitchSweepS: 4,          // sweep: seconds across the screen
             pitchK: 2.0,
             pitchRef: 'moving',     // 'moving' (moving average) | 'utterance' (utterance mean)
             pitchRefMs: 300,        // moving-average time constant
             pitchMin: 70,           // pitch axis, Hz (log)
-            pitchMax: 500,
+            pitchMax: 1000,
             pitchShowRaw: true,     // raw f0 as a dotted line
             pitchUnderlay: true,    // dimmed spectrogram of the same range underneath
             pitchColor: '#FF6A3D',
