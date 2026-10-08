@@ -33,6 +33,7 @@
 html, body {
     margin: 0;
     height: 100%;
+    height: var(--app-h, 100%);
     background: var(--paper);
     color: var(--ink);
     font-family: var(--font-ui);
@@ -55,6 +56,7 @@ button { cursor: pointer; }
     /* phones: 100vh includes the area under the browser's address/tool bars,
        which hid the Start button; dvh is the height actually visible */
     height: 100dvh;
+    height: var(--app-h, 100dvh);   /* set from window.innerHeight in index.html */
     width: 100vw;
 }
 

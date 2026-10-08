@@ -6,7 +6,18 @@
     <title>Seeing Sound</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-    <link rel="stylesheet" href="static/css/styles.css">
+    <link rel="stylesheet" href="static/css/styles.css?v=20261008b">
+    <script>
+        // Phones: size the app to the area actually visible between the browser's
+        // bars (100vh / 100dvh are not reliable there, e.g. Chrome on iOS).
+        (function () {
+            function fit() { document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px'); }
+            fit();
+            window.addEventListener('resize', fit);
+            window.addEventListener('orientationchange', function () { setTimeout(fit, 250); });
+            if (window.visualViewport) window.visualViewport.addEventListener('resize', fit);
+        })();
+    </script>
 </head>
 <body>
 <div class="app">
@@ -448,18 +459,18 @@
     </main>
 </div>
 
-    <script src="static/js/config.js"></script>
-    <script src="static/js/gl/glsl.js"></script>
-    <script src="static/js/gl/mat4.js"></script>
-    <script src="static/js/core.js"></script>
-    <script src="static/js/render/spectrogram2d.js"></script>
-    <script src="static/js/render/spectrogram3d.js"></script>
-    <script src="static/js/audio/pitch.js"></script>
-    <script src="static/js/render/pitchContour.js"></script>
-    <script src="static/js/ui/notify.js"></script>
-    <script src="static/js/ui/controls.js"></script>
-    <script src="static/js/ui/layout.js"></script>
-    <script src="static/js/ui/presets.js"></script>
-    <script src="static/js/main.js"></script>
+    <script src="static/js/config.js?v=20261008b"></script>
+    <script src="static/js/gl/glsl.js?v=20261008b"></script>
+    <script src="static/js/gl/mat4.js?v=20261008b"></script>
+    <script src="static/js/core.js?v=20261008b"></script>
+    <script src="static/js/render/spectrogram2d.js?v=20261008b"></script>
+    <script src="static/js/render/spectrogram3d.js?v=20261008b"></script>
+    <script src="static/js/audio/pitch.js?v=20261008b"></script>
+    <script src="static/js/render/pitchContour.js?v=20261008b"></script>
+    <script src="static/js/ui/notify.js?v=20261008b"></script>
+    <script src="static/js/ui/controls.js?v=20261008b"></script>
+    <script src="static/js/ui/layout.js?v=20261008b"></script>
+    <script src="static/js/ui/presets.js?v=20261008b"></script>
+    <script src="static/js/main.js?v=20261008b"></script>
 </body>
 </html>
