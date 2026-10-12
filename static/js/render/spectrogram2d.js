@@ -24,7 +24,12 @@ class Spectrogram2DMethods {
 
         // Fragment Shader
         const fsSource = `
+            // highp where available: texture y for the top bins needs ~1e-4 resolution
+            #ifdef GL_FRAGMENT_PRECISION_HIGH
+            precision highp float;
+            #else
             precision mediump float;
+            #endif
             uniform sampler2D u_texture;
             uniform float u_offset;
             uniform float u_min_freq_ratio;
@@ -145,7 +150,7 @@ class Spectrogram2DMethods {
 
         // Texture
         this.texWidth = 2048;
-        this.texHeight = 4096; // Max supported bins
+        this.texHeight = HISTORY_TEX_HEIGHT; // Max supported bins
         this.texture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);

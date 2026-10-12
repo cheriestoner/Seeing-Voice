@@ -1,17 +1,31 @@
 // Shared GLSL snippets used by both the 2D and 3D spectrogram shaders.
 
+// Height of the spectrum history texture (rows = FFT bins, only the first
+// fftSize/2 in use). The frequency ratios passed to the shaders are in
+// units of this height.
+const HISTORY_TEX_HEIGHT = 4096;
+
 // Shared GLSL: frequency param [0,1] → texture Y, matching the 2D shader.
 // Needs uniforms u_scale_mode, u_min_freq_ratio, u_max_freq_ratio in scope.
+//
+// Works in FFT-bin units (bin b = frequency / bin width): 70 Hz is ~3 bins,
+// whereas as a fraction of the texture it is ~0.0008, which used to be
+// clamped to 0.001 for the log and silently moved the bottom of a log axis
+// (70 Hz drew as ~88 Hz, so harmonics sat ~15% low against the labels and
+// the pitch contour). Bin b is stored in texel row b, whose centre is b + 0.5.
 const FREQ_GLSL = `
     float freqTexY(float t) {
+        const float H = ${HISTORY_TEX_HEIGHT.toFixed(1)};
+        float bMin = u_min_freq_ratio * H;
+        float bMax = u_max_freq_ratio * H;
+        float b;
         if (u_scale_mode == 1) {
-            float safeMin = max(u_min_freq_ratio, 0.001);
-            float logMin = log(safeMin);
-            float logMax = log(u_max_freq_ratio);
-            float logY = logMin + t * (logMax - logMin);
-            return exp(logY);
+            float lo = max(bMin, 0.5);                 // below half a bin there is only DC
+            b = lo * pow(bMax / lo, t);
+        } else {
+            b = bMin + t * (bMax - bMin);
         }
-        return u_min_freq_ratio + t * (u_max_freq_ratio - u_min_freq_ratio);
+        return (b + 0.5) / H;
     }
 `;
 
