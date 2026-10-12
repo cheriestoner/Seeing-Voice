@@ -29,6 +29,10 @@ const PITCH_HEAD_HOLD_S = 0.15;   // the comet head fades out over this after vo
 const PITCH_LOUD_RANGE_DB = 40;   // loudness 0…1 spans voicing level … +40 dB
 const PITCH_MAX_SPARKS = 6000;
 const PITCH_SWEEP_DRIFT_PX = 24;  // plume on a sweep: sparks drift back this many px/s
+const PITCH_JUMP_OCT = 0.4;       // a voiced-to-voiced jump larger than this (≈ 5 semitones) is suspect…
+const PITCH_JUMP_CONFIRM = 3;     // …and is only accepted once this many frames agree on the new level
+const PITCH_AGREE_OCT = 0.15;     // frames "agree" when within this of each other
+const PITCH_BREAK_OCT = 0.5;      // the drawn line never joins columns further apart than this
 const PITCH_STYLE_HINTS = {
     line: 'The shown f₀ as a line on the time axis.',
     ribbon: 'Comet: the head is the voice now (size and heat = loudness); the tail is the recent pitch, tapering and cooling over the Persistence time.',
@@ -52,6 +56,7 @@ class PitchMethods {
             sparks: [], spawnedCol: -1, lastDrawT: 0,
             frameLf: NaN,                          // this frame's estimate
             recent: [],                            // last raw voiced estimates (median of 3)
+            pending: [],                           // estimates after a suspect jump, awaiting confirmation
             refState: NaN,
             utterSum: 0, utterN: 0,
             lastVoicedCol: -1e9,
@@ -76,9 +81,30 @@ class PitchMethods {
         if (r.f0 == null) {
             P.frameLf = NaN;
             P.recent.length = 0;
+            P.pending.length = 0;
             return;
         }
         const lf = Math.log2(r.f0);
+        // Continuity guard: a large jump from the running contour (octave errors,
+        // the half-voiced frames at an offset) is held back as a gap until
+        // PITCH_JUMP_CONFIRM consecutive frames agree on the new level.
+        const last = Number.isFinite(P.frameLf) ? P.frameLf : (P.pending.length ? P._held : NaN);
+        if (Number.isFinite(last) && Math.abs(lf - last) > PITCH_JUMP_OCT) {
+            const pd = P.pending;
+            if (pd.length && Math.abs(lf - pd[pd.length - 1]) > PITCH_AGREE_OCT) pd.length = 0;
+            pd.push(lf);
+            if (pd.length < PITCH_JUMP_CONFIRM) {
+                P.frameLf = NaN;           // drawn as a gap, not as a vertical line
+                P.recent.length = 0;
+                P._held = last;            // keep comparing against the contour we had
+                return;
+            }
+            P.recent = pd.slice(-3);       // the new level is confirmed
+            pd.length = 0;
+            P.frameLf = P.recent.slice().sort((x, y) => x - y)[1];
+            return;
+        }
+        P.pending.length = 0;
         // median of the last 3 voiced estimates suppresses isolated octave errors
         P.recent.push(lf);
         if (P.recent.length > 3) P.recent.shift();
@@ -254,6 +280,8 @@ class PitchMethods {
             if (!Number.isFinite(v)) { prev = null; continue; }
             // sweep: do not join the newest slot at the right edge to the left edge
             if (g.sweep && (c + 1) % g.sweepCols === 0) prev = null;
+            // never draw a jump as a connecting line (compare raw f0, independent of k)
+            if (prev && Math.abs(this._pitch.lf[i] - this._pitch.lf[prev.i]) > PITCH_BREAK_OCT) prev = null;
             const p = { x: this._pitchX(g, c), y: g.yOf(v), c, i };
             if (prev) {
                 const ageS = (g.pos - 1 - c) / COLUMN_RATE;
