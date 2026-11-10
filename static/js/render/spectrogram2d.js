@@ -38,7 +38,8 @@ class Spectrogram2DMethods {
             uniform float u_visible_width;
             uniform float u_data_lo;       // data area in (direction-flipped) x: [lo, hi], newest at hi
             uniform float u_data_hi;
-            uniform int u_scale_mode; // 0 = linear, 1 = log
+            uniform int u_scale_mode; // FREQ_SCALES id: 0 linear, 1 log, 2 mel, 3 bark, 4 ERB
+            uniform float u_bin_hz;   // FFT bin width (Hz), for the warped scales
             uniform int u_colormap; // 0 = experimental, 1 = viridis, 2 = greyscale, 3 = reversed greyscale
             uniform int u_flip;    // 0 = scroll left (←), 1 = scroll right (→)
             uniform int u_bg_mode; // 0 = dark, 1 = transparent, 2 = white
@@ -193,6 +194,7 @@ class Spectrogram2DMethods {
         gl.uniform1f(gl.getUniformLocation(p, 'u_data_lo'), s.dataLo);
         gl.uniform1f(gl.getUniformLocation(p, 'u_data_hi'), s.dataHi);
         gl.uniform1i(gl.getUniformLocation(p, 'u_scale_mode'), s.scaleMode);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_bin_hz'), s.binHz);
         gl.uniform1i(gl.getUniformLocation(p, 'u_colormap'), s.colormapMode);
         gl.uniform1i(gl.getUniformLocation(p, 'u_flip'), (s.flip ?? this.settings.scrollDirection === 'right') ? 1 : 0);
         gl.uniform1i(gl.getUniformLocation(p, 'u_sweep'), s.sweep ? 1 : 0);

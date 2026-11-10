@@ -5,15 +5,33 @@
 // units of this height.
 const HISTORY_TEX_HEIGHT = 4096;
 
-// Shared GLSL: frequency param [0,1] → texture Y, matching the 2D shader.
-// Needs uniforms u_scale_mode, u_min_freq_ratio, u_max_freq_ratio in scope.
+// Shared GLSL: axis param t ∈ [0,1] (0 = bottom) → texture Y.
+// Needs uniforms u_scale_mode, u_min_freq_ratio, u_max_freq_ratio, u_bin_hz.
+//
+// Pipeline stage B (axis mapping): the axis is linear in a warped frequency
+// u = warp(f); t picks u between warp(lo) and warp(hi), the inverse warp gives
+// f, and f / binHz is the FFT bin. Scales and ids match FREQ_SCALES in
+// config.js (0 linear, 1 log, 2 mel, 3 bark, 4 ERB).
 //
 // Works in FFT-bin units (bin b = frequency / bin width): 70 Hz is ~3 bins,
 // whereas as a fraction of the texture it is ~0.0008, which used to be
-// clamped to 0.001 for the log and silently moved the bottom of a log axis
-// (70 Hz drew as ~88 Hz, so harmonics sat ~15% low against the labels and
-// the pitch contour). Bin b is stored in texel row b, whose centre is b + 0.5.
+// clamped to 0.001 for the log and silently moved the bottom of a log axis.
+// Bin b is stored in texel row b, whose centre is b + 0.5. The caller passes
+// the displayed range (displayedRange() in config.js), so a log axis already
+// starts at ≥ half a bin.
 const FREQ_GLSL = `
+    float scaleWarp(float f) {
+        if (u_scale_mode == 2) return 2595.0 * log(1.0 + f / 700.0) / log(10.0);
+        if (u_scale_mode == 3) return 26.81 * f / (1960.0 + f) - 0.53;
+        if (u_scale_mode == 4) return 21.4 * log(1.0 + 0.00437 * f) / log(10.0);
+        return f;
+    }
+    float scaleUnwarp(float u) {
+        if (u_scale_mode == 2) return 700.0 * (pow(10.0, u / 2595.0) - 1.0);
+        if (u_scale_mode == 3) return 1960.0 * (u + 0.53) / (26.28 - u);
+        if (u_scale_mode == 4) return (pow(10.0, u / 21.4) - 1.0) / 0.00437;
+        return u;
+    }
     float freqTexY(float t) {
         const float H = ${HISTORY_TEX_HEIGHT.toFixed(1)};
         float bMin = u_min_freq_ratio * H;
@@ -22,8 +40,12 @@ const FREQ_GLSL = `
         if (u_scale_mode == 1) {
             float lo = max(bMin, 0.5);                 // below half a bin there is only DC
             b = lo * pow(bMax / lo, t);
-        } else {
+        } else if (u_scale_mode == 0) {
             b = bMin + t * (bMax - bMin);
+        } else {
+            float a = scaleWarp(bMin * u_bin_hz);
+            float c = scaleWarp(bMax * u_bin_hz);
+            b = scaleUnwarp(a + t * (c - a)) / u_bin_hz;
         }
         return (b + 0.5) / H;
     }

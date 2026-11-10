@@ -24,6 +24,17 @@ class ControlsMethods {
                     this.frequencyData = new Uint8Array(this.analyser.frequencyBinCount);
                     this.timeData = new Uint8Array(this.analyser.fftSize);
                 }
+                this.updateFrequencyScale();   // bin width moves the bottom of a log axis
+            });
+        });
+
+        // Spectral › A: analysis method (only implemented ones are enabled)
+        document.querySelectorAll('input[name="analysis-radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (!REPRESENTATIONS[e.target.value]?.implemented) return;
+                this.settings.analysis = e.target.value;
+                this.updateFrequencyScale();
+                this.updateStatusSummary();
             });
         });
         
@@ -209,8 +220,8 @@ class ControlsMethods {
             this.settings.softEdge = e.target.checked;
         });
 
-        // Mapping (2D / 3D spectrogram / …) and the 3D style
-        document.querySelectorAll('input[name="mapping-radio"]').forEach(radio => {
+        // Spectral › View: 2D / 3D (Spectral vs Features is chosen on the rail)
+        document.querySelectorAll('input[name="dim-radio"]').forEach(radio => {
             radio.addEventListener('change', (e) => this.setMapping(e.target.value));
         });
         // Pitch contour × k
@@ -244,6 +255,13 @@ class ControlsMethods {
                 document.getElementById('pitchMinValue').textContent = `${Math.round(s.pitchMin)} Hz`;
             }
             this.updateFrequencyScale();
+        });
+        document.querySelectorAll('input[name="pitchscale-radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.settings.pitchScale = e.target.value;
+                this.updateFrequencyScale();
+                this.updateSegmentedControlIndicators();
+            });
         });
         document.querySelectorAll('input[name="pitchref-radio"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
@@ -410,11 +428,16 @@ class ControlsMethods {
             const checked = document.querySelector(`input[name="${name}"][value="${value}"]:checked`);
             if (!checked) return;
             const index = radios.indexOf(checked);
-            const indicator = checked.closest('.segmented-control').querySelector('.selection-indicator');
+            const indicator = checked.closest('.segmented-control')?.querySelector('.selection-indicator');
+            if (!indicator) return;
             indicator.style.transform = `translateX(calc(${index} * 100%))`;
         };
 
         update('fft-radio', this.settings.fftSize);
+        update('dim-radio', this.settings.mapping === 'pitch' ? (this._lastSpecMapping || 'spec2d') : this.settings.mapping);
+        update('levelmode-radio', this.settings.levelMode);
+        update('window-radio', 'blackman');
+        update('lifter-radio', 'off');
         update('speed-radio', this.settings.scrollSpeed);
         update('direction-radio', this.settings.scrollDirection);
         update('scale-radio', this.settings.scale);
@@ -423,6 +446,7 @@ class ControlsMethods {
         update('camera3d-radio', this.settings.spec3dCamera);
         update('fade3d-radio', this.settings.spec3dFade);
         update('pitchref-radio', this.settings.pitchRef);
+        update('pitchscale-radio', this.settings.pitchScale);
         update('pitchstyle-radio', this.settings.pitchStyle);
         update('timemode-radio', this.settings.pitchTimeMode);
 
@@ -460,49 +484,24 @@ class ControlsMethods {
      */
     updateFrequencyScale() {
         const scaleLabels = document.querySelectorAll('.frequency-scale .scale-label');
-        // The pitch mapping has its own (log) axis
-        const axis = this.settings.mapping === 'pitch'
-            ? this.pitchAxis()
-            : { min: this.settings.minFreq, max: this.settings.maxFreq, scale: this.settings.scale };
-        const min = axis.min;
-        const max = axis.max;
-        
-        // Create logarithmic scale points
-        const scalePoints = [];
-        const count = 9;
-        
-        if (axis.scale === 'log') {
-            // Logarithmic scale
-            // Ensure min is positive for log scale calculation
-            const safeMin = Math.max(min, 1);
-            const logMin = Math.log(safeMin);
-            const logMax = Math.log(max);
-            const logRange = logMax - logMin;
-            
-            for (let i = 0; i < count; i++) {
-                const t = i / (count - 1);
-                const logValue = logMax - t * logRange;
-                scalePoints.push(Math.exp(logValue));
-            }
+        // The pitch mapping has its own axis; the spectral axis comes from
+        // stage B (scale + displayed span, see spectralAxis()).
+        let lo, hi, scale;
+        if (this.settings.mapping === 'pitch') {
+            const a = this.pitchAxis();
+            lo = a.min; hi = a.max; scale = a.scale;
         } else {
-            // Linear scale
-            const range = max - min;
-            for (let i = 0; i < count; i++) {
-                const t = i / (count - 1);
-                scalePoints.push(max - t * range);
-            }
+            ({ lo, hi, scale } = this.spectralAxis());
         }
-        
-        // Update labels
+
+        // Labels are evenly spaced on screen (flex, top → bottom), i.e. at
+        // equal steps of the warped axis, so they are exact on every scale.
+        const n = scaleLabels.length;
         scaleLabels.forEach((label, i) => {
-            const value = scalePoints[i];
-            if (value >= 1000) {
-                label.textContent = `${(value / 1000).toLocaleString('en-US', {maximumFractionDigits: 1})} kHz`;
-            } else {
-                label.textContent = `${Math.round(value)} Hz`;
-            }
-            
-            // Add special highlighting for the 1/4 point
+            const value = freqAtAxisFraction(1 - i / (n - 1), lo, hi, scale);
+            label.textContent = value >= 1000
+                ? `${(value / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })} kHz`
+                : `${Math.round(value)} Hz`;
             label.classList.remove('highlight');
         });
 

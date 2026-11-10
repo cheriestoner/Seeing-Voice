@@ -3,7 +3,8 @@
 
 const COLORMAP_NAMES = { reversed_greyscale: 'Ink', viridis: 'Viridis', experimental: 'Crossmodal', greyscale: 'Greyscale' };
 const GROUND_NAMES = { white: 'Paper', dark: 'Night', transparent: 'Clear' };
-const MAPPING_NAMES = { spec2d: '2D spectrogram', spec3d: '3D spectrogram', pitch: 'Pitch × k' };
+const MAPPING_NAMES = { spec2d: '2D Spectral', spec3d: '3D Spectral', pitch: 'Features · Pitch × k' };
+const SWATCH_CLASSES = { reversed_greyscale: 'swatch-ink', viridis: 'swatch-viridis', experimental: 'swatch-crossmodal', greyscale: 'swatch-grey' };
 
 class LayoutMethods {
     initLayout() {
@@ -11,25 +12,36 @@ class LayoutMethods {
         const railButtons = [...document.querySelectorAll('.rail-btn[data-panel]')];
         const sections = [...document.querySelectorAll('.panel-section[data-section]')];
 
-        // Rail: clicking a section opens it; clicking the open one closes the panel
+        // Rail. The "Show" buttons (Spectral / Features) also choose what is on
+        // stage; the shared panels (Colour, Time, Presets) only open their panel.
+        // Clicking the button of the open panel again closes the panel.
+        this._lastSpecMapping = this.settings.mapping === 'spec3d' ? 'spec3d' : 'spec2d';
+        this.openPanel = (name) => {
+            app.classList.remove('panel-closed');
+            railButtons.forEach(b => {
+                const on = b.dataset.panel === name;
+                b.classList.toggle('is-active', on);
+                b.setAttribute('aria-expanded', String(on));
+            });
+            sections.forEach(s => s.classList.toggle('is-active', s.dataset.section === name));
+            try { localStorage.setItem('seeing_sound_panel', name); } catch (e) { /* ignore */ }
+            requestAnimationFrame(() => this.updateSegmentedControlIndicators());
+        };
         railButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 const name = btn.dataset.panel;
                 const isOpen = !app.classList.contains('panel-closed');
-                if (isOpen && btn.classList.contains('is-active')) {
+                if (name === 'spectral' && this.settings.mapping === 'pitch') {
+                    this.setMapping(this._lastSpecMapping);
+                } else if (name === 'features' && this.settings.mapping !== 'pitch') {
+                    this.setMapping('pitch');
+                } else if (isOpen && btn.classList.contains('is-active')) {
                     app.classList.add('panel-closed');
                     btn.classList.remove('is-active');
                     btn.setAttribute('aria-expanded', 'false');
                     return;
                 }
-                app.classList.remove('panel-closed');
-                railButtons.forEach(b => {
-                    const on = b === btn;
-                    b.classList.toggle('is-active', on);
-                    b.setAttribute('aria-expanded', String(on));
-                });
-                sections.forEach(s => s.classList.toggle('is-active', s.dataset.section === name));
-                try { localStorage.setItem('seeing_sound_panel', name); } catch (e) { /* ignore */ }
+                this.openPanel(name);
             });
         });
 
@@ -40,12 +52,12 @@ class LayoutMethods {
             railButtons.forEach(b => b.classList.remove('is-active'));
         }
 
-        // Restore the last open section
+        // Restore the last open panel. The mapping panels follow the mapping
+        // actually on stage; panels from older layouts map onto it too.
         let last = null;
         try { last = localStorage.getItem('seeing_sound_panel'); } catch (e) { /* ignore */ }
-        if (['mapping', 'frequency', 'motion', 'detail'].includes(last)) last = 'vis';
-        const lastBtn = railButtons.find(b => b.dataset.panel === last);
-        if (!small && lastBtn && !lastBtn.classList.contains('is-active')) lastBtn.click();
+        if (!['colour', 'time', 'presets'].includes(last)) last = this.settings.mapping === 'pitch' ? 'features' : 'spectral';
+        if (!small) this.openPanel(last);
 
         // Close-panel chevron (rail stays)
         const collapseBtn = document.getElementById('panelCollapseBtn');
@@ -91,23 +103,16 @@ class LayoutMethods {
             panel.addEventListener('input', () => this.updateStatusSummary());
             panel.addEventListener('change', () => this.updateStatusSummary());
         }
-        // Accordion groups in the Visualisation panel (open state remembered)
-        let openSet = null;
-        try { openSet = JSON.parse(localStorage.getItem('seeing_sound_acc') || 'null'); } catch (e) { /* ignore */ }
-        if (!Array.isArray(openSet)) openSet = ['view', 'freq', 'contour'];
-        document.querySelectorAll('.acc').forEach(acc => {
-            const head = acc.querySelector('.acc-head');
-            const setOpen = (on) => {
-                acc.classList.toggle('is-open', on);
-                head.setAttribute('aria-expanded', String(on));
-            };
-            setOpen(openSet.includes(acc.dataset.acc));
-            head.addEventListener('click', () => {
-                setOpen(!acc.classList.contains('is-open'));
-                const now = [...document.querySelectorAll('.acc.is-open')].map(a => a.dataset.acc);
-                try { localStorage.setItem('seeing_sound_acc', JSON.stringify(now)); } catch (e) { /* ignore */ }
-                this.updateSegmentedControlIndicators();
+        // Jump bars: scroll the open panel to a section (panels stay flat)
+        document.querySelectorAll('.jump-bar [data-jump]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const el = document.getElementById(btn.dataset.jump);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
+        });
+        // Rows that open another panel (Colormap → Colour, underlay → Spectral)
+        document.querySelectorAll('[data-goto-panel]').forEach(btn => {
+            btn.addEventListener('click', () => this.openPanel(btn.dataset.gotoPanel));
         });
 
         this.syncPitchStyleUI();
@@ -129,12 +134,14 @@ class LayoutMethods {
         s.mapping = mapping;
         s.viewMode = mapping === 'spec3d' ? s.spec3dStyle : '2d';
 
-        const radio = document.querySelector(`input[name="mapping-radio"][value="${mapping}"]`);
-        if (radio) radio.checked = true;
-        // Visualisation panel: only this mapping's own groups
-        document.querySelectorAll('.acc[data-for]').forEach(el => {
-            el.hidden = !el.dataset.for.split(/\s+/).includes(mapping);
-        });
+        if (mapping !== 'pitch') {
+            this._lastSpecMapping = mapping;
+            const dim = document.querySelector(`input[name="dim-radio"][value="${mapping}"]`);
+            if (dim) dim.checked = true;
+        }
+        // The rail marks which "Show" button is on stage
+        const current = mapping === 'pitch' ? 'features' : 'spectral';
+        document.querySelectorAll('.rail-mapping').forEach(b => b.classList.toggle('is-current', b.dataset.panel === current));
         // Shared panels: a control listed for other mappings only is hidden.
         // data-applies holds mapping ids or finer keys ('spec3d-persistence' =
         // 3D with persistence fading).
@@ -185,26 +192,48 @@ class LayoutMethods {
         const container = document.querySelector('.spectrogram-container');
         if (container) container.dataset.ground = s.backgroundStyle;
 
-        // one-line summaries on the accordion headers
+        const rep = this.representation();
+        const ax = this.spectralAxis();
+        const S = freqScale(ax.scale);
+        const kHz = (v) => v >= 1000 ? `${+(v / 1000).toFixed(1)}k` : `${Math.round(v)}`;
+        const dbRange = `${s.minDb}…${s.maxDb} dB`;
+        const colormap = COLORMAP_NAMES[s.colormap] || s.colormap;
+
+        // one-line summaries on the section headers
         const summaries = {
             view: `${s.spec3dCamera} · ${s.spec3dStyle}${s.spec3dStyle === 'surface' && s.spec3dLighting ? ' · lit' : ''}`,
-            freq: `${s.scale === 'log' ? 'Log' : 'Lin'} ${s.minFreq}–${s.maxFreq} Hz`,
+            analysis: `${rep.label} · ${s.fftSize}`,
+            freq: `${S.label}${rep.nativeScale ? ' (native)' : ''} · ${kHz(ax.lo)}–${kHz(ax.hi)} Hz`,
+            level: `${dbRange}${s.noiseThreshold > 0 ? ` · thr ${s.noiseThreshold}%` : ''}`,
             contour: `${{ line: 'Line', ribbon: 'Ribbon', plume: 'Plume', flight: 'Flight' }[s.pitchStyle]} · k ${(+s.pitchK).toFixed(2)} · ${s.pitchRef === 'moving' ? 'ref ' + s.pitchRefMs + ' ms' : 'utterance'}`,
-            paxis: `${s.pitchMin}–${s.pitchMax} Hz`,
+            paxis: `${s.pitchScale === 'linear' ? 'Lin' : 'Log'} ${s.pitchMin}–${s.pitchMax} Hz`,
             layers: s.pitchStyle === 'flight' ? 'no time axis' : [s.pitchShowRaw && 'raw f₀', s.pitchUnderlay && 'underlay'].filter(Boolean).join(' · ') || 'pitch only',
+            tracking: `YIN ${(+s.pitchThreshold).toFixed(2)} · ${s.pitchVoicingDb} dBFS`,
+            underlay: `${rep.label} ${s.fftSize}, ${dbRange}`,
         };
         document.querySelectorAll('[data-summary]').forEach(el => { el.textContent = summaries[el.dataset.summary] || ''; });
 
+        // Spectral › C: the colormap row mirrors the Colour panel
+        const cmName = document.getElementById('colormapLinkName');
+        if (cmName) cmName.textContent = colormap;
+        const cmSw = document.getElementById('colormapLinkSwatch');
+        if (cmSw) cmSw.className = `swatch ${SWATCH_CLASSES[s.colormap] || ''}`;
+        const aHint = document.getElementById('analysisHint');
+        if (aHint) aHint.textContent = rep.hint;
+        const sHint = document.getElementById('scaleHint');
+        if (sHint) sHint.textContent = S.hint;
+
         const strip = document.getElementById('statusStrip');
         if (!strip) return;
+        const pitch = s.mapping === 'pitch';
         const parts = [
             MAPPING_NAMES[s.mapping] + (s.mapping === 'spec3d' ? ` (${s.spec3dStyle}, ${s.spec3dCamera}, fade ${s.spec3dFade})`
-                : s.mapping === 'pitch' ? ` (${s.pitchStyle}${s.pitchTimeMode === 'sweep' ? `, sweep ${(+s.pitchSweepS).toFixed(1)} s` : ''}, k ${(+s.pitchK).toFixed(2)}, ref ${s.pitchRef === 'moving' ? s.pitchRefMs + ' ms' : 'utterance'})` : ''),
-            `FFT ${s.fftSize}`,
-            s.mapping === 'pitch' ? `Log ${s.pitchMin}–${s.pitchMax} Hz` : `${s.scale === 'log' ? 'Log' : 'Lin'} ${s.minFreq}–${s.maxFreq} Hz`,
-            `${s.minDb}…${s.maxDb} dB`,
-            `${COLORMAP_NAMES[s.colormap] || s.colormap} on ${GROUND_NAMES[s.backgroundStyle] || s.backgroundStyle}`,
-            s.mapping === 'pitch' && s.pitchTimeMode === 'sweep' ? 'sweep →' : `${s.scrollSpeed} ${s.scrollDirection === 'right' ? '→' : '←'}`,
+                : pitch ? ` (${s.pitchStyle}${s.pitchTimeMode === 'sweep' ? `, sweep ${(+s.pitchSweepS).toFixed(1)} s` : ''}, k ${(+s.pitchK).toFixed(2)}, ref ${s.pitchRef === 'moving' ? s.pitchRefMs + ' ms' : 'utterance'})` : ''),
+            `A ${rep.label} ${s.fftSize}`,
+            pitch ? `${s.pitchScale === 'linear' ? 'Lin' : 'Log'} ${s.pitchMin}–${s.pitchMax} Hz` : `B ${S.label} ${Math.round(ax.lo)}–${Math.round(ax.hi)} Hz`,
+            `C ${dbRange}`,
+            `${colormap} on ${GROUND_NAMES[s.backgroundStyle] || s.backgroundStyle}`,
+            pitch && s.pitchTimeMode === 'sweep' ? 'sweep →' : `${s.scrollSpeed} ${s.scrollDirection === 'right' ? '→' : '←'}`,
             `smooth ${s.smoothingMs} ms · persist ${persistenceSeconds(s.trailLength).toFixed(1)} s`,
         ];
         if (s.noiseThreshold > 0) parts.push(`threshold ${s.noiseThreshold}%`);

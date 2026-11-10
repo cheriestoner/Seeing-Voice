@@ -1,0 +1,7 @@
+torch>=2.4
+diffusers>=0.30
+transformers>=4.44
+accelerate>=0.33
+websockets>=12
+pillow>=10
+numpy

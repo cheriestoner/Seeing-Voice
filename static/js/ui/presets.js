@@ -39,6 +39,11 @@ class PresetsMethods {
         if (s.minDb == null) this.settings.minDb = -100;
         if (s.smoothingMs == null) this.settings.smoothingMs = 10;
         if (s.maxDb == null) this.settings.maxDb = -30;
+        // Spectral pipeline stages A / C (presets from before they existed);
+        // an analysis method that is not implemented falls back to STFT
+        if (!REPRESENTATIONS[s.analysis]?.implemented) this.settings.analysis = 'stft';
+        if (s.levelMode !== 'db') this.settings.levelMode = 'db';
+        if (!FREQ_SCALES[s.scale]) this.settings.scale = 'linear';
 
         const setRadio = (name, value) => {
             const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
@@ -46,13 +51,15 @@ class PresetsMethods {
         };
 
         setRadio('fft-radio', s.fftSize);
-        setRadio('scale-radio', s.scale);
+        setRadio('scale-radio', this.settings.scale);
+        setRadio('analysis-radio', this.settings.analysis);
+        setRadio('levelmode-radio', this.settings.levelMode);
         setRadio('colormap-radio', s.colormap);
         setRadio('speed-radio', s.scrollSpeed);
         setRadio('direction-radio', s.scrollDirection);
         setRadio('background-radio', s.backgroundStyle);
         // pitch mapping (presets from before it existed keep the defaults)
-        const P = { pitchStyle: 'ribbon', pitchTimeMode: 'scroll', pitchSweepS: 4, pitchK: 2.0, pitchRef: 'moving', pitchRefMs: 300, pitchMin: 70, pitchMax: 500,
+        const P = { pitchStyle: 'ribbon', pitchTimeMode: 'scroll', pitchSweepS: 4, pitchK: 2.0, pitchRef: 'moving', pitchRefMs: 300, pitchScale: 'log', pitchMin: 70, pitchMax: 500,
                     pitchShowRaw: true, pitchUnderlay: true, pitchColor: '#FF6A3D',
                     pitchVoicingDb: -55, pitchThreshold: 0.15 };
         for (const key in P) if (s[key] == null) this.settings[key] = P[key];
@@ -74,6 +81,7 @@ class PresetsMethods {
         document.getElementById('pitchThreshold').value = st.pitchThreshold;
         document.getElementById('pitchThresholdValue').textContent = (+st.pitchThreshold).toFixed(2);
         setRadio('pitchref-radio', st.pitchRef);
+        setRadio('pitchscale-radio', st.pitchScale);
         setRadio('pitchstyle-radio', st.pitchStyle);
         setRadio('timemode-radio', st.pitchTimeMode);
         document.getElementById('pitchSweepS').value = st.pitchSweepS;

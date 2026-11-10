@@ -175,7 +175,7 @@ class PitchMethods {
 
     /** Pitch axis (Hz) used by the overlay, the dimmed spectrogram and the labels. */
     pitchAxis() {
-        return { min: this.settings.pitchMin, max: this.settings.pitchMax, scale: 'log' };
+        return { min: this.settings.pitchMin, max: this.settings.pitchMax, scale: this.settings.pitchScale === 'linear' ? 'linear' : 'log' };
     }
 
     drawPitchOverlay(sh) {
@@ -203,7 +203,10 @@ class PitchMethods {
             x0: flip ? axLo : axHi,
             dir: flip ? 1 : -1,
             pxPerCol: SCROLL_SPEEDS[s.scrollSpeed],
-            yOf: (l) => H * (1 - (l - lmin) / (lmax - lmin)),
+            // values are log2 f0 throughout (k scales cents); only the axis mapping differs
+            yOf: s.pitchScale === 'linear'
+                ? (l) => H * (1 - (Math.pow(2, l) - s.pitchMin) / (s.pitchMax - s.pitchMin))
+                : (l) => H * (1 - (l - lmin) / (lmax - lmin)),
             persist: sh.persistence,
             newest: this._writeCount - 1,
             pos: sh.pos,

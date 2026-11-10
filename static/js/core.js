@@ -37,7 +37,9 @@ class SeeingSound {
             scrollSpeed: 'medium',
             scrollDirection: 'left',
             sampleRate: 44100, // Will be updated with actual sample rate
-            scale: 'linear', // 'linear' or 'log'
+            analysis: 'stft', // stage A: REPRESENTATIONS id (analysis/representations.js)
+            scale: 'linear', // stage B: FREQ_SCALES id — 'linear' | 'log' | 'mel' | 'bark' | 'erb'
+            levelMode: 'db',  // stage C: 'db' (power and linear compression are planned)
             colormap: 'viridis', // 'experimental' or 'viridis'
             backgroundStyle: 'dark', // 'dark' | 'transparent'
             softEdge: true,
@@ -56,7 +58,8 @@ class SeeingSound {
             pitchK: 1.0,
             pitchRef: 'moving',     // 'moving' (moving average) | 'utterance' (utterance mean)
             pitchRefMs: 300,        // moving-average time constant
-            pitchMin: 70,           // pitch axis, Hz (log)
+            pitchScale: 'log',      // pitch axis: 'log' | 'linear'
+            pitchMin: 70,           // pitch axis, Hz
             pitchMax: 1000,
             pitchShowRaw: true,     // raw f0 as a dotted line
             pitchUnderlay: true,    // dimmed spectrogram of the same range underneath
@@ -128,6 +131,7 @@ class SeeingSound {
             // Create audio context first - this must happen in response to a user gesture
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             this.settings.sampleRate = this.audioContext.sampleRate;
+            this.updateFrequencyScale();   // bin width is known now (bottom of a log axis)
             
             // Request microphone access
             const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -256,16 +260,8 @@ class SeeingSound {
         }
         
         try {
-            // Process audio data
-            // AnalyserNode smoothing is applied once per read, i.e. per animation
-            // frame. Derive it from the real time since the last read so the
-            // smoothing time constant is the same at any refresh rate.
-            const now = performance.now() / 1000;
-            const dt = this._lastRead == null ? 1 / 60 : Math.min(now - this._lastRead, 0.25);
-            this._lastRead = now;
-            const tauS = this.settings.smoothingMs / 1000;
-            this.analyser.smoothingTimeConstant = tauS > 0 ? Math.exp(-dt / tauS) : 0;
-            this.analyser.getByteFrequencyData(this.frequencyData);
+            // Stage A: this frame's column (see analysis/representations.js)
+            this._column = this.readRepresentation();
             this.analyser.getByteTimeDomainData(this.timeData);
             this.trackClipping();
             
@@ -293,7 +289,7 @@ class SeeingSound {
         //    due — zero on fast screens, several after a hiccup (the current
         //    spectrum is repeated, which keeps the timing exact).
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
-        const bins = this.analyser.frequencyBinCount;
+        const bins = this._column.bins;
         const pos = (performance.now() / 1000 - this._t0) * COLUMN_RATE; // in columns, fractional
         let due = Math.floor(pos) + 1 - this._writeCount;
         if (due > this.texWidth) {                     // e.g. tab was hidden: skip ahead
@@ -329,11 +325,14 @@ class SeeingSound {
         const dataLo = flip ? gutter / canvasWidth : 0;          // in shader (flipped) coords
         const dataHi = flip ? 1 : 1 - gutter / canvasWidth;
         const dataPx = (dataHi - dataLo) * canvasWidth;
+        // Stage B: the spectral axis (scale + span actually drawn)
+        const axis = this.spectralAxis();
         const shared = {
             pos: pos,
             offset: visualOffsetNorm,
-            minRatio: (this.settings.minFreq / nyquist) * heightScale,
-            maxRatio: (this.settings.maxFreq / nyquist) * heightScale,
+            minRatio: (axis.lo / nyquist) * heightScale,
+            maxRatio: (axis.hi / nyquist) * heightScale,
+            binHz: this._column.binHz,
             threshold: Math.max(this.settings.noiseThreshold / 100.0, MIN_THRESHOLD),
             // 2D: data spans [dataLo, dataHi] of the width; newest at dataHi
             dataLo: dataLo,
@@ -349,7 +348,7 @@ class SeeingSound {
             sweep: sweep,
             sweepCols: Math.max(2, Math.round(this.settings.pitchSweepS * COLUMN_RATE)),
             refLevel: Math.max(this._refLevel || 0, MIN_REF_LEVEL),
-            scaleMode: this.settings.scale === 'log' ? 1 : 0,
+            scaleMode: freqScale(axis.scale).id,
             colormapMode: { experimental: 0, viridis: 1, greyscale: 2, reversed_greyscale: 3 }[this.settings.colormap] ?? 1,
         };
 
@@ -367,11 +366,11 @@ class SeeingSound {
             pitchSh.visibleWidthRatio = ((pitchSh.dataHi - pitchSh.dataLo) * canvasWidth / scrollSpeed) / this.texWidth;
             pitchSh.visibleSeconds = ((pitchSh.dataHi - pitchSh.dataLo) * canvasWidth / scrollSpeed) / COLUMN_RATE;
             if (this.settings.pitchUnderlay && st !== 'flight') {
-                // the 2D spectrogram, restricted to the pitch axis (log), no onset flash
+                // the 2D spectrogram, restricted to the pitch axis, no onset flash
                 this.renderWebGL2D({ ...pitchSh,
                     minRatio: (this.settings.pitchMin / nyquist) * heightScale,
                     maxRatio: (this.settings.pitchMax / nyquist) * heightScale,
-                    scaleMode: 1, boost: 0 });
+                    scaleMode: this.settings.pitchScale === 'linear' ? 0 : 1, boost: 0 });
             } else {
                 const bg = this.settings.backgroundStyle;
                 if (bg === 'white') gl.clearColor(1, 1, 1, 1);
@@ -392,7 +391,7 @@ class SeeingSound {
     writeColumn(col, bins) {
         const gl = this.gl;
         const hop = 1 / COLUMN_RATE;
-        const env = this.frequencyData;
+        const env = this._column.data;
         gl.texSubImage2D(gl.TEXTURE_2D, 0, col, 0, 1, bins, gl.LUMINANCE, gl.UNSIGNED_BYTE, env);
 
         // Reference level for ageing: the recent peak within the displayed

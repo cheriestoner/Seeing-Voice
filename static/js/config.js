@@ -37,25 +37,77 @@ const SCROLL_SPEEDS = {
 // The 3D grid keeps its previous history length: canvas width / (1.5 × speed) columns
 const SCROLL_3D_FACTOR = 1.5;
 
+// ── Frequency axis scales (pipeline stage B) ─────────────────────────────
+// Each scale is a monotonic warp f (Hz) → u and its inverse. The display axis
+// is linear in u, so everything that maps frequency to screen position (the
+// shaders, the Hz labels, the range slider) goes through these functions.
+// `id` is the integer passed to the shaders as u_scale_mode; FREQ_GLSL in
+// gl/glsl.js implements the same inverses.
+//   mel  — O'Shaughnessy: 2595·log10(1 + f/700)
+//   bark — Traunmüller (1990): 26.81·f/(1960 + f) − 0.53
+//   erb  — ERB-rate, Glasberg & Moore (1990): 21.4·log10(1 + 0.00437·f)
+const FREQ_SCALES = {
+    linear: { id: 0, label: 'Linear', short: 'Lin',
+              warp: f => f, unwarp: u => u,
+              hint: 'Harmonics are evenly spaced: the k-th harmonic moves k times as far as f₀, so modulation is amplified toward the top.' },
+    log:    { id: 1, label: 'Log', short: 'Log',
+              warp: f => Math.log(f), unwarp: u => Math.exp(u),
+              hint: 'Equal pitch steps are equal heights, so every harmonic moves by the same amount. Low frequencies have few FFT bins and look blocky.' },
+    mel:    { id: 2, label: 'Mel', short: 'Mel',
+              warp: f => 2595 * Math.log10(1 + f / 700), unwarp: m => 700 * (Math.pow(10, m / 2595) - 1),
+              hint: 'Roughly linear below 1 kHz, logarithmic above: a perceptual pitch scale.' },
+    bark:   { id: 3, label: 'Bark', short: 'Bark',
+              warp: f => 26.81 * f / (1960 + f) - 0.53, unwarp: z => 1960 * (z + 0.53) / (26.28 - z),
+              hint: 'Critical-band rate (about 24 bands up to 15 kHz). Similar in shape to Mel, coarser at the top.' },
+    erb:    { id: 4, label: 'ERB', short: 'ERB',
+              warp: f => 21.4 * Math.log10(1 + 0.00437 * f), unwarp: e => (Math.pow(10, e / 21.4) - 1) / 0.00437,
+              hint: 'Auditory-filter (ERB-rate) spacing, between linear and log; the spacing a cochleagram’s channels will use.' },
+};
+function freqScale(name) { return FREQ_SCALES[name] || FREQ_SCALES.linear; }
+
+/**
+ * The frequency span actually drawn for [minHz, maxHz] on `scale`. A log axis
+ * cannot reach 0 Hz, and below half an FFT bin there is only DC, so its bottom
+ * is raised to binHz / 2 — the shaders, labels and pitch overlay all use this.
+ */
+function displayedRange(minHz, maxHz, scale, binHz) {
+    let lo = Math.max(0, minHz), hi = Math.max(maxHz, lo + 1);
+    if (scale === 'log') lo = Math.max(lo, (binHz || 1) / 2, 1);
+    return { lo, hi };
+}
+
+/** Frequency at fraction t ∈ [0,1] up a display axis (0 = bottom). */
+function freqAtAxisFraction(t, lo, hi, scale) {
+    const S = freqScale(scale);
+    const a = S.warp(lo), b = S.warp(hi);
+    return S.unwarp(a + t * (b - a));
+}
+
 const PRESETS = {
   default: { scale: 'linear', ceiling: 4000,  minFreq: 0,  maxFreq: 4000  },
   music:   { scale: 'log',    ceiling: 22050, minFreq: 20, maxFreq: 20000 },
 };
 
-// Frequency slider helpers — slider internal range is always 0–SLIDER_STEPS (1000)
-// Hz ceiling lives in maxFreqInput; scale comes from the Lin/Log switch
+// Frequency slider helpers — slider internal range is always 0–SLIDER_STEPS (1000).
+// The Hz ceiling lives in maxFreqInput; the slider follows the axis scale so a
+// given slider travel covers the same share of the axis (log uses log1p so the
+// slider can still reach 0 Hz).
 const SLIDER_STEPS = 1000;
 
+function _sliderWarp(scale) {
+    if (scale === 'log') return { warp: Math.log1p, unwarp: Math.expm1 };
+    return freqScale(scale);
+}
 function sliderToFreq(pos, ceiling, scale) {
-    if (scale === 'log')
-        return Math.round(Math.expm1(pos / SLIDER_STEPS * Math.log1p(ceiling)));
-    return Math.round(pos / SLIDER_STEPS * ceiling);
+    const S = _sliderWarp(scale);
+    const a = S.warp(0), b = S.warp(ceiling);
+    return Math.max(0, Math.round(S.unwarp(a + pos / SLIDER_STEPS * (b - a))));
 }
 function freqToSlider(freq, ceiling, scale) {
     if (freq <= 0 || ceiling <= 0) return 0;
-    if (scale === 'log')
-        return Math.round(Math.log1p(Math.min(freq, ceiling)) / Math.log1p(ceiling) * SLIDER_STEPS);
-    return Math.round(Math.min(freq, ceiling) / ceiling * SLIDER_STEPS);
+    const S = _sliderWarp(scale);
+    const a = S.warp(0), b = S.warp(ceiling);
+    return Math.round((S.warp(Math.min(freq, ceiling)) - a) / (b - a) * SLIDER_STEPS);
 }
 function getCeiling() {
     return parseInt(document.getElementById('maxFreqInput').value) || 4000;

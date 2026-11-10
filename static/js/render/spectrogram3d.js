@@ -48,6 +48,7 @@ class Spectrogram3DMethods {
             uniform float u_ref_level;     // recent peak level the fade is measured against
             uniform int u_fade_mode;       // 0 = persistence (level ageing, shared with 2D), 1 = distance
             uniform int u_scale_mode;
+            uniform float u_bin_hz;
             uniform mat4 u_mvp;
             uniform float u_height_scale;
             uniform int u_lighting;
@@ -244,6 +245,7 @@ class Spectrogram3DMethods {
         gl.uniform1f(gl.getUniformLocation(p, 'u_persistence'), s.persistence);
         gl.uniform1f(gl.getUniformLocation(p, 'u_ref_level'), s.refLevel);
         gl.uniform1i(gl.getUniformLocation(p, 'u_scale_mode'), s.scaleMode);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_bin_hz'), s.binHz);
         gl.uniform1i(gl.getUniformLocation(p, 'u_colormap'), s.colormapMode);
         gl.uniformMatrix4fv(gl.getUniformLocation(p, 'u_mvp'), false, this._mvp);
         gl.uniform1f(gl.getUniformLocation(p, 'u_height_scale'), this.settings.heightScale3d);

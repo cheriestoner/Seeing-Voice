@@ -22,7 +22,7 @@
     --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
     --rail-w: 76px;
-    --panel-w: 320px;
+    --panel-w: 340px;
     --radius: 10px;
     --ease: cubic-bezier(.2, .7, .2, 1);
 }
@@ -762,7 +762,7 @@ button { cursor: pointer; }
 /* ── Small screens: panel overlays the stage ───────────────────────────── */
 
 @media (max-width: 760px) {
-    :root { --rail-w: 64px; --panel-w: min(320px, calc(100vw - 64px)); }
+    :root { --rail-w: 64px; --panel-w: min(340px, calc(100vw - 64px)); }
     .rail-btn { width: 52px; }
     .panel {
         position: absolute;
@@ -773,3 +773,154 @@ button { cursor: pointer; }
     }
     .status-strip { display: none; }
 }
+
+/* ── Spectral / Features panels (rail "Show" group, A·B·C sections) ─────── */
+
+.rail-group {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 2px 0 -2px;
+    user-select: none;
+}
+/* The mapping on stage keeps a mark on its rail button while another panel is open */
+.rail-mapping { position: relative; }
+.rail-mapping.is-current:not(.is-active)::after {
+    content: '';
+    position: absolute;
+    top: 8px; right: 9px;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+}
+
+/* Sticky jump bar: one tap to a section; the panel stays flat (no accordions) */
+.jump-bar {
+    position: sticky;
+    top: -28px;                       /* = .panel-section padding-top */
+    z-index: 3;
+    display: flex;
+    gap: 6px;
+    margin: -8px 0 -24px;
+    padding: 10px 0;
+    background: var(--paper);
+}
+.jump-bar button {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 32px;
+    padding: 0 4px;
+    border: none;
+    border-radius: 8px;
+    background: var(--paper-2);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.jump-bar button:hover { background: var(--line); }
+.jump-bar b { font-family: var(--font-mono); font-weight: 500; color: var(--accent); margin-right: 3px; }
+
+.sec {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    scroll-margin-top: 30px;          /* clear of the sticky jump bar */
+}
+.sec-head { display: flex; align-items: center; gap: 10px; margin-bottom: -4px; }
+.sec-badge {
+    flex: 0 0 auto;
+    min-width: 24px; height: 24px;
+    padding: 0 5px;
+    border-radius: 6px;
+    background: var(--accent);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    display: flex; align-items: center; justify-content: center;
+}
+.sec-badge-ink { background: var(--ink); }
+.sec-title { font-size: 16px; font-weight: 700; flex: 1; }
+.sec-summary {
+    font-size: 11.5px;
+    color: var(--ink-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 58%;
+}
+
+/* A · method tiles */
+.method-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.method-tile {
+    position: relative;
+    min-height: 74px;
+    padding: 10px 10px 9px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+}
+.method-tile input { position: absolute; opacity: 0; pointer-events: none; }
+.method-tile svg { width: 18px; height: 18px; fill: none; stroke: var(--ink-2); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.method-name { font-size: 13px; font-weight: 600; line-height: 1.15; }
+.method-tag { font-size: 10.5px; color: var(--ink-3); }
+.method-tile:hover { border-color: var(--line-2); }
+.method-tile:has(input:checked) { border: 1.5px solid var(--accent); background: var(--accent-soft); }
+.method-tile:has(input:checked) svg { stroke: var(--accent); }
+.method-tile:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.method-tile.is-planned { cursor: not-allowed; background: var(--paper-2); border-style: dashed; }
+.method-tile.is-planned .method-name, .method-tile.is-planned svg { opacity: .45; }
+.method-tile.is-planned:hover { border-color: var(--line); }
+
+.method-params {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 16px;
+    border-radius: var(--radius);
+    background: #F5F4EF;
+}
+.method-params .sub-head { margin-bottom: -6px; }
+
+/* Not implemented yet: visible, inert */
+.field.is-planned > *:not(.field-label) { opacity: .5; }
+.field-label em, .sub-head em {
+    font-style: normal;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-left: 6px;
+}
+.segmented-control input:disabled + label { color: var(--ink-3); opacity: .55; cursor: not-allowed; }
+
+/* A row that jumps to another panel */
+.link-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 46px;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #fff;
+    text-align: left;
+    font-size: 13px;
+    color: var(--ink-2);
+    line-height: 1.4;
+}
+.link-row:hover { border-color: var(--line-2); }
+.link-row-text { flex: 1; min-width: 0; }
+.link-row-text b { color: var(--ink); font-weight: 600; }
+.link-row-go { font-size: 12px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+.link-row .swatch { flex: 0 0 auto; width: 56px; }
