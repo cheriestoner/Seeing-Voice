@@ -166,29 +166,48 @@ class ControlsMethods {
             document.getElementById('smoothingMsValue').textContent = `${this.settings.smoothingMs} ms`;
         });
 
-        // Analyser level range (dB). Keep at least 10 dB between floor and ceiling.
+        // Spectral › 3 Visibility. The level window is stored as minDb / maxDb
+        // (floor / ceiling); the two perceptual controls are views of it:
+        //   Sensitivity = how low the ceiling sits (moves floor and ceiling together)
+        //   Contrast    = how narrow the window is (ceiling − floor, 10…100 dB)
+        // The exact floor / ceiling sliders (All settings) edit the same values.
+        const DB_CEIL_MIN = -70, DB_CEIL_MAX = 0, DB_FLOOR_MIN = -170, DB_GAP_MIN = 10, DB_GAP_MAX = 100;
         const fmtDb = (v) => `${v < 0 ? '−' : ''}${Math.abs(v)} dB`;
         const minDbEl = document.getElementById('minDb'), maxDbEl = document.getElementById('maxDb');
-        const syncDb = (changed) => {
-            let lo = parseInt(minDbEl.value), hi = parseInt(maxDbEl.value);
-            if (hi - lo < 10) {
-                if (changed === 'min') { hi = lo + 10; maxDbEl.value = hi; }
-                else { lo = hi - 10; minDbEl.value = lo; }
-            }
-            this.settings.minDb = parseInt(minDbEl.value);
-            this.settings.maxDb = parseInt(maxDbEl.value);
-            document.getElementById('minDbValue').textContent = fmtDb(this.settings.minDb);
-            document.getElementById('maxDbValue').textContent = fmtDb(this.settings.maxDb);
-            this.applyDbRange();
+        const sensEl = document.getElementById('sensitivity'), contrastEl = document.getElementById('contrast');
+        const setLevelWindow = (maxDb, gapDb) => {
+            const hi = Math.round(Math.min(DB_CEIL_MAX, Math.max(DB_CEIL_MIN, maxDb)));
+            const gap = Math.round(Math.min(DB_GAP_MAX, Math.max(DB_GAP_MIN, gapDb)));
+            this.settings.maxDb = hi;
+            this.settings.minDb = Math.max(DB_FLOOR_MIN, hi - gap);
+            this.syncDbUI();
         };
         this.syncDbUI = () => {
-            minDbEl.value = this.settings.minDb; maxDbEl.value = this.settings.maxDb;
-            document.getElementById('minDbValue').textContent = fmtDb(this.settings.minDb);
-            document.getElementById('maxDbValue').textContent = fmtDb(this.settings.maxDb);
+            const s = this.settings, gap = s.maxDb - s.minDb;
+            minDbEl.value = s.minDb; maxDbEl.value = s.maxDb;
+            document.getElementById('minDbValue').textContent = fmtDb(s.minDb);
+            document.getElementById('maxDbValue').textContent = fmtDb(s.maxDb);
+            sensEl.value = -s.maxDb;
+            contrastEl.value = DB_GAP_MAX + DB_GAP_MIN - gap;     // right = narrower window = harder
+            document.getElementById('sensitivityValue').textContent = `ceiling ${fmtDb(s.maxDb)}`;
+            document.getElementById('contrastValue').textContent = `${gap} dB shown`;
             this.applyDbRange();
         };
-        minDbEl.addEventListener('input', () => syncDb('min'));
-        maxDbEl.addEventListener('input', () => syncDb('max'));
+        sensEl.addEventListener('input', () =>
+            setLevelWindow(-parseInt(sensEl.value), this.settings.maxDb - this.settings.minDb));
+        contrastEl.addEventListener('input', () =>
+            setLevelWindow(this.settings.maxDb, DB_GAP_MAX + DB_GAP_MIN - parseInt(contrastEl.value)));
+        // Exact sliders: keep at least DB_GAP_MIN between floor and ceiling
+        minDbEl.addEventListener('input', () => {
+            const lo = parseInt(minDbEl.value);
+            const hi = Math.max(this.settings.maxDb, lo + DB_GAP_MIN);
+            setLevelWindow(hi, hi - lo);
+        });
+        maxDbEl.addEventListener('input', () => {
+            const hi = parseInt(maxDbEl.value);
+            setLevelWindow(hi, hi - Math.min(this.settings.minDb, hi - DB_GAP_MIN));
+        });
+        this.syncDbUI();
 
         // Noise threshold control
         document.getElementById('noiseThreshold').addEventListener('input', (e) => {
@@ -445,6 +464,7 @@ class ControlsMethods {
         update('dim-radio', this.settings.mapping === 'pitch' ? (this._lastSpecMapping || 'spec2d') : this.settings.mapping);
         update('levelmode-radio', this.settings.levelMode);
         update('window-radio', this.settings.windowType);
+        update('panelmode-radio', this._panelMode || 'essentials');
         update('lifter-radio', 'off');
         update('speed-radio', this.settings.scrollSpeed);
         update('direction-radio', this.settings.scrollDirection);

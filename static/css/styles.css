@@ -924,3 +924,28 @@ button { cursor: pointer; }
 .link-row-text b { color: var(--ink); font-weight: 600; }
 .link-row-go { font-size: 12px; font-weight: 600; color: var(--accent); white-space: nowrap; }
 .link-row .swatch { flex: 0 0 auto; width: 56px; }
+
+/* ── Essentials / All settings ─────────────────────────────────────────── */
+/* Researcher-only tuning carries data-level="advanced" and is hidden in Essentials. */
+.panel.is-essentials [data-level="advanced"] { display: none !important; }
+.panel-mode {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 24px;
+    border-top: 1px solid var(--line);
+    background: var(--paper);
+}
+.panel-mode .field-label { white-space: nowrap; }
+.panel-mode .segmented-control { flex: 1 1 auto; }
+
+/* What the two ends of a perceptual slider do */
+.slider-ends {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: -4px;
+    font-size: 11.5px;
+    color: var(--ink-3);
+}

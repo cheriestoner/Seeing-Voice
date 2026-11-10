@@ -103,6 +103,21 @@ class LayoutMethods {
             panel.addEventListener('input', () => this.updateStatusSummary());
             panel.addEventListener('change', () => this.updateStatusSummary());
         }
+        // Essentials / All settings: hides researcher-only tuning (data-level="advanced")
+        const setPanelMode = (mode) => {
+            this._panelMode = mode === 'all' ? 'all' : 'essentials';
+            if (panel) panel.classList.toggle('is-essentials', this._panelMode === 'essentials');
+            const r = document.querySelector(`input[name="panelmode-radio"][value="${this._panelMode}"]`);
+            if (r) r.checked = true;
+            try { localStorage.setItem('seeing_sound_panel_mode', this._panelMode); } catch (e) { /* ignore */ }
+            requestAnimationFrame(() => this.updateSegmentedControlIndicators());
+        };
+        document.querySelectorAll('input[name="panelmode-radio"]').forEach(r =>
+            r.addEventListener('change', (e) => setPanelMode(e.target.value)));
+        let savedMode = null;
+        try { savedMode = localStorage.getItem('seeing_sound_panel_mode'); } catch (e) { /* ignore */ }
+        setPanelMode(savedMode || 'essentials');
+
         // Jump bars: scroll the open panel to a section (panels stay flat)
         document.querySelectorAll('.jump-bar [data-jump]').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -202,9 +217,9 @@ class LayoutMethods {
         // one-line summaries on the section headers
         const summaries = {
             view: `${s.spec3dCamera} · ${s.spec3dStyle}${s.spec3dStyle === 'surface' && s.spec3dLighting ? ' · lit' : ''}`,
-            analysis: `${rep.label} · ${Math.round(s.windowMs)} ms`,
+            analysis: `${rep.label} · ${Math.round(s.windowMs)} ms${s.windowType !== 'blackman' ? ' ' + STFT_WINDOWS[s.windowType].label : ''}`,
             freq: `${S.label}${rep.nativeScale ? ' (native)' : ''} · ${kHz(ax.lo)}–${kHz(ax.hi)} Hz`,
-            level: `${dbRange}${s.noiseThreshold > 0 ? ` · thr ${s.noiseThreshold}%` : ''}`,
+            level: `ceiling ${s.maxDb} · ${s.maxDb - s.minDb} dB${s.noiseThreshold > 0 ? ` · thr ${s.noiseThreshold}%` : ''}`,
             contour: `${{ line: 'Line', ribbon: 'Ribbon', plume: 'Plume', flight: 'Flight' }[s.pitchStyle]} · k ${(+s.pitchK).toFixed(2)} · ${s.pitchRef === 'moving' ? 'ref ' + s.pitchRefMs + ' ms' : 'utterance'}`,
             paxis: `${s.pitchScale === 'linear' ? 'Lin' : 'Log'} ${s.pitchMin}–${s.pitchMax} Hz`,
             layers: s.pitchStyle === 'flight' ? 'no time axis' : [s.pitchShowRaw && 'raw f₀', s.pitchUnderlay && 'underlay'].filter(Boolean).join(' · ') || 'pitch only',
@@ -229,9 +244,9 @@ class LayoutMethods {
         const parts = [
             MAPPING_NAMES[s.mapping] + (s.mapping === 'spec3d' ? ` (${s.spec3dStyle}, ${s.spec3dCamera}, fade ${s.spec3dFade})`
                 : pitch ? ` (${s.pitchStyle}${s.pitchTimeMode === 'sweep' ? `, sweep ${(+s.pitchSweepS).toFixed(1)} s` : ''}, k ${(+s.pitchK).toFixed(2)}, ref ${s.pitchRef === 'moving' ? s.pitchRefMs + ' ms' : 'utterance'})` : ''),
-            `A ${rep.label} ${Math.round(s.windowMs)} ms`,
-            pitch ? `${s.pitchScale === 'linear' ? 'Lin' : 'Log'} ${s.pitchMin}–${s.pitchMax} Hz` : `B ${S.label} ${Math.round(ax.lo)}–${Math.round(ax.hi)} Hz`,
-            `C ${dbRange}`,
+            `${rep.label} ${Math.round(s.windowMs)} ms`,
+            pitch ? `${s.pitchScale === 'linear' ? 'Lin' : 'Log'} ${s.pitchMin}–${s.pitchMax} Hz` : `${S.label} ${Math.round(ax.lo)}–${Math.round(ax.hi)} Hz`,
+            dbRange,
             `${colormap} on ${GROUND_NAMES[s.backgroundStyle] || s.backgroundStyle}`,
             pitch && s.pitchTimeMode === 'sweep' ? 'sweep →' : `${s.scrollSpeed} ${s.scrollDirection === 'right' ? '→' : '←'}`,
             `smooth ${s.smoothingMs} ms · persist ${persistenceSeconds(s.trailLength).toFixed(1)} s`,
