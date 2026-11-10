@@ -44,13 +44,18 @@ class PresetsMethods {
         if (!REPRESENTATIONS[s.analysis]?.implemented) this.settings.analysis = 'stft';
         if (s.levelMode !== 'db') this.settings.levelMode = 'db';
         if (!FREQ_SCALES[s.scale]) this.settings.scale = 'linear';
+        // Presets from before the custom STFT stored an FFT size (= window length)
+        if (s.windowMs == null) this.settings.windowMs = s.fftSize
+            ? Math.round(s.fftSize / (this.settings.sampleRate || 44100) * 1000) : WINDOW_MS_DEFAULT;
+        if (!STFT_WINDOWS[s.windowType]) this.settings.windowType = 'blackman';
+        delete this.settings.fftSize;
 
         const setRadio = (name, value) => {
             const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
             if (el) el.checked = true;
         };
 
-        setRadio('fft-radio', s.fftSize);
+        this._syncWindowUI();
         setRadio('scale-radio', this.settings.scale);
         setRadio('analysis-radio', this.settings.analysis);
         setRadio('levelmode-radio', this.settings.levelMode);

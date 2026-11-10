@@ -19,7 +19,7 @@
 
 const REPRESENTATIONS = {
     stft:       { label: 'STFT',          tag: 'Hz',             axis: 'freq', nativeScale: null,  implemented: true,
-                  hint: 'Short-time Fourier transform (Web Audio analyser, Blackman window): the standard spectrogram.' },
+                  hint: 'Short-time Fourier transform: the standard spectrogram. Window length sets what it can resolve — pulses or harmonics.' },
     reassigned: { label: 'Reassigned',    tag: 'Hz · sharpened', axis: 'freq', nativeScale: null,  implemented: false,
                   hint: 'Each bin’s energy moved to its centre of gravity, so harmonics become thin lines. Planned.' },
     cqt:        { label: 'CQT / Wavelet', tag: 'log Hz',         axis: 'freq', nativeScale: 'log', implemented: false,
@@ -41,7 +41,7 @@ class RepresentationMethods {
 
     /** FFT bin width in Hz (row spacing of the history texture). */
     binHz() {
-        return this.settings.sampleRate / this.settings.fftSize;
+        return stftPlan(this.settings.sampleRate, this.settings.windowMs).binHz;
     }
 
     /**
@@ -57,16 +57,18 @@ class RepresentationMethods {
     }
 
     _readStft() {
-        // AnalyserNode smoothing is applied once per read, i.e. per animation
-        // frame. Derive it from the real time since the last read so the
-        // smoothing time constant is the same at any refresh rate.
+        // Smoothing is applied once per read, i.e. per animation frame. Derive
+        // it from the real time since the last read so the smoothing time
+        // constant is the same at any refresh rate.
         const now = performance.now() / 1000;
         const dt = this._lastRead == null ? 1 / 60 : Math.min(now - this._lastRead, 0.25);
         this._lastRead = now;
         const tauS = this.settings.smoothingMs / 1000;
-        this.analyser.smoothingTimeConstant = tauS > 0 ? Math.exp(-dt / tauS) : 0;
-        this.analyser.getByteFrequencyData(this.frequencyData);
-        return { data: this.frequencyData, bins: this.analyser.frequencyBinCount, binHz: this.binHz() };
+        const smoothing = tauS > 0 ? Math.exp(-dt / tauS) : 0;
+        const s = this.settings, st = this._stft;
+        st.configure(s.sampleRate, s.windowMs, s.windowType);   // no-op unless the plan changed
+        this.frequencyData = st.process(this._tap, smoothing, s.minDb, s.maxDb);
+        return { data: this.frequencyData, bins: st.bins, binHz: st.binHz };
     }
 
     /**

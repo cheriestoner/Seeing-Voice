@@ -202,14 +202,14 @@ class LayoutMethods {
         // one-line summaries on the section headers
         const summaries = {
             view: `${s.spec3dCamera} · ${s.spec3dStyle}${s.spec3dStyle === 'surface' && s.spec3dLighting ? ' · lit' : ''}`,
-            analysis: `${rep.label} · ${s.fftSize}`,
+            analysis: `${rep.label} · ${Math.round(s.windowMs)} ms`,
             freq: `${S.label}${rep.nativeScale ? ' (native)' : ''} · ${kHz(ax.lo)}–${kHz(ax.hi)} Hz`,
             level: `${dbRange}${s.noiseThreshold > 0 ? ` · thr ${s.noiseThreshold}%` : ''}`,
             contour: `${{ line: 'Line', ribbon: 'Ribbon', plume: 'Plume', flight: 'Flight' }[s.pitchStyle]} · k ${(+s.pitchK).toFixed(2)} · ${s.pitchRef === 'moving' ? 'ref ' + s.pitchRefMs + ' ms' : 'utterance'}`,
             paxis: `${s.pitchScale === 'linear' ? 'Lin' : 'Log'} ${s.pitchMin}–${s.pitchMax} Hz`,
             layers: s.pitchStyle === 'flight' ? 'no time axis' : [s.pitchShowRaw && 'raw f₀', s.pitchUnderlay && 'underlay'].filter(Boolean).join(' · ') || 'pitch only',
             tracking: `YIN ${(+s.pitchThreshold).toFixed(2)} · ${s.pitchVoicingDb} dBFS`,
-            underlay: `${rep.label} ${s.fftSize}, ${dbRange}`,
+            underlay: `${rep.label} ${Math.round(s.windowMs)} ms, ${dbRange}`,
         };
         document.querySelectorAll('[data-summary]').forEach(el => { el.textContent = summaries[el.dataset.summary] || ''; });
 
@@ -229,7 +229,7 @@ class LayoutMethods {
         const parts = [
             MAPPING_NAMES[s.mapping] + (s.mapping === 'spec3d' ? ` (${s.spec3dStyle}, ${s.spec3dCamera}, fade ${s.spec3dFade})`
                 : pitch ? ` (${s.pitchStyle}${s.pitchTimeMode === 'sweep' ? `, sweep ${(+s.pitchSweepS).toFixed(1)} s` : ''}, k ${(+s.pitchK).toFixed(2)}, ref ${s.pitchRef === 'moving' ? s.pitchRefMs + ' ms' : 'utterance'})` : ''),
-            `A ${rep.label} ${s.fftSize}`,
+            `A ${rep.label} ${Math.round(s.windowMs)} ms`,
             pitch ? `${s.pitchScale === 'linear' ? 'Lin' : 'Log'} ${s.pitchMin}–${s.pitchMax} Hz` : `B ${S.label} ${Math.round(ax.lo)}–${Math.round(ax.hi)} Hz`,
             `C ${dbRange}`,
             `${colormap} on ${GROUND_NAMES[s.backgroundStyle] || s.backgroundStyle}`,

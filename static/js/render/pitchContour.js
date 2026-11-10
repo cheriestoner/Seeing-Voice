@@ -67,9 +67,11 @@ class PitchMethods {
     /** Estimate f0 once per animation frame (only while the pitch mapping is shown). */
     trackPitchFrame() {
         if (!this._pitch) this.resetPitchHistory();
-        const a = this.analyser;
-        if (!this.floatTime || this.floatTime.length !== a.fftSize) this.floatTime = new Float32Array(a.fftSize);
-        a.getFloatTimeDomainData(this.floatTime);
+        // Own fixed window (newest PITCH_WINDOW_MS of the shared tap), independent
+        // of the spectrogram's window length
+        const sr = this.audioContext.sampleRate;
+        const n = Math.min(this._tap.length, Math.round(PITCH_WINDOW_MS / 1000 * sr));
+        this.floatTime = this._tap.subarray(this._tap.length - n);
         const s = this.settings;
         const r = detectPitchYIN(this.floatTime, this.audioContext.sampleRate, s.pitchMin * 0.8, s.pitchMax * 1.25,
                                  s.pitchThreshold, s.pitchVoicingDb);

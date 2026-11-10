@@ -28,7 +28,8 @@ class SeeingSound {
         
         // Visualization settings
         this.settings = {
-            fftSize: 2048, // Default is medium (2048)
+            windowMs: WINDOW_MS_DEFAULT, // stage A: STFT window length (audio/stft.js); FFT size follows
+            windowType: 'blackman',      // 'blackman' | 'hann' | 'gauss'
             minDb: -100,   // analyser level range: below → 0, above → 255 (clipped)
             maxDb: -30,
             minFreq: 0,
@@ -84,7 +85,6 @@ class SeeingSound {
 
         // Buffers for audio data
         this.frequencyData = null;
-        this.timeData = null;
         
         // Rendering variables
         this.requestId = null;
@@ -142,15 +142,14 @@ class SeeingSound {
                 } 
             });
             
-            // Create analyser node
+            // Analyser node: only a tap for raw samples now. The spectrum is our
+            // own STFT (audio/stft.js), which frees window length from FFT size.
             this.analyser = this.audioContext.createAnalyser();
-            this.analyser.fftSize = this.settings.fftSize;
-            this._lastRead = null;   // smoothing is set per read in render()
-            this.applyDbRange();
-            
-            // Create buffers for frequency data
-            this.frequencyData = new Uint8Array(this.analyser.frequencyBinCount);
-            this.timeData = new Uint8Array(this.analyser.fftSize);
+            this.analyser.fftSize = STFT_TAP_SIZE;
+            this._tap = new Float32Array(STFT_TAP_SIZE);   // newest samples, shared by STFT + pitch
+            this._stft = new StftAnalyzer();
+            this._lastRead = null;   // smoothing factor is derived per read
+            this.frequencyData = null;   // set by the first STFT read
             
             // Connect microphone to analyser
             this.microphone = this.audioContext.createMediaStreamSource(stream);
@@ -254,15 +253,16 @@ class SeeingSound {
      */
     render() {
         // Safety check
-        if (!this.analyser || !this.frequencyData || !this.isRunning) {
+        if (!this.analyser || !this._tap || !this.isRunning) {
             console.warn('Cannot render: audio analyser not initialized or not running');
             return;
         }
         
         try {
+            // Raw samples for this frame (STFT and pitch tracker both read this)
+            this.analyser.getFloatTimeDomainData(this._tap);
             // Stage A: this frame's column (see analysis/representations.js)
             this._column = this.readRepresentation();
-            this.analyser.getByteTimeDomainData(this.timeData);
             this.trackClipping();
             
             // Render using WebGL

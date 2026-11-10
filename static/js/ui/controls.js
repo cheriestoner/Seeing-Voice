@@ -14,17 +14,26 @@ class ControlsMethods {
             }
         });
         
-        // FFT size control (radio buttons)
-        document.querySelectorAll('input[name="fft-radio"]').forEach(radio => {
+        // Spectral › A: STFT window length (log slider + quick chips) and shape.
+        // The analyser picks up changes on its next read (audio/stft.js).
+        const setWindowMs = (ms) => {
+            this.settings.windowMs = Math.round(Math.min(WINDOW_MS_MAX, Math.max(WINDOW_MS_MIN, ms)));
+            this._syncWindowUI();
+            this.updateFrequencyScale();   // bin width moves the bottom of a log axis
+            this.updateStatusSummary?.();
+        };
+        document.getElementById('windowMs').addEventListener('input', (e) => {
+            setWindowMs(windowMsFromSlider(parseInt(e.target.value)));
+        });
+        document.querySelectorAll('.window-chip').forEach(btn => {
+            btn.addEventListener('click', (e) => setWindowMs(parseFloat(e.currentTarget.dataset.windowMs)));
+        });
+        document.querySelectorAll('input[name="window-radio"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
-                this.settings.fftSize = parseInt(e.target.value);
+                this.settings.windowType = e.target.value;
+                this._syncWindowUI();
                 this.updateSegmentedControlIndicators();
-                if (this.analyser) {
-                    this.analyser.fftSize = this.settings.fftSize;
-                    this.frequencyData = new Uint8Array(this.analyser.frequencyBinCount);
-                    this.timeData = new Uint8Array(this.analyser.fftSize);
-                }
-                this.updateFrequencyScale();   // bin width moves the bottom of a log axis
+                this.updateStatusSummary?.();
             });
         });
 
@@ -433,10 +442,9 @@ class ControlsMethods {
             indicator.style.transform = `translateX(calc(${index} * 100%))`;
         };
 
-        update('fft-radio', this.settings.fftSize);
         update('dim-radio', this.settings.mapping === 'pitch' ? (this._lastSpecMapping || 'spec2d') : this.settings.mapping);
         update('levelmode-radio', this.settings.levelMode);
-        update('window-radio', 'blackman');
+        update('window-radio', this.settings.windowType);
         update('lifter-radio', 'off');
         update('speed-radio', this.settings.scrollSpeed);
         update('direction-radio', this.settings.scrollDirection);
@@ -600,12 +608,26 @@ class ControlsMethods {
         }
     }
 
+    /** Window-length slider, readout (ms · bandwidth) and shape radios from settings. */
+    _syncWindowUI() {
+        const s = this.settings;
+        const slider = document.getElementById('windowMs');
+        if (slider) slider.value = sliderFromWindowMs(s.windowMs);
+        const bw = windowBandwidthHz(s.sampleRate, s.windowMs, s.windowType);
+        const el = document.getElementById('windowMsValue');
+        if (el) el.textContent = `${Math.round(s.windowMs)} ms · ${Math.round(bw)} Hz`;
+        const radio = document.querySelector(`input[name="window-radio"][value="${s.windowType}"]`);
+        if (radio) radio.checked = true;
+        document.querySelectorAll('.window-chip').forEach(b =>
+            b.classList.toggle('active', Math.round(s.windowMs) === Math.round(parseFloat(b.dataset.windowMs))));
+    }
+
     /**
      * Update UI elements based on current settings
      */
     updateUI() {
-        // Update FFT size radio buttons
-        document.querySelector(`input[name="fft-radio"][value="${this.settings.fftSize}"]`).checked = true;
+        // STFT window length / shape
+        this._syncWindowUI();
         
         // Update frequency range — ceiling from maxFreqInput, slider values from settings
         const ceiling = getCeiling();

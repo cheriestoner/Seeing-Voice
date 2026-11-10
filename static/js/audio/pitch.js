@@ -6,9 +6,11 @@
 //   threshold  YIN threshold (lower = stricter); minRmsDb = voicing level gate (dBFS)
 //   returns    { f0, aperiodicity, rms } — f0 is null when unvoiced
 //
-// The analysis window is the analyser's fftSize; YIN needs about two periods
-// of the lowest f0, so FFT 2048 at 48 kHz (43 ms) covers fmin ≈ 50 Hz, while
-// FFT 1024 (21 ms) only reaches ≈ 95 Hz.
+// The analysis window is PITCH_WINDOW_MS, separate from the spectrogram's
+// window length. YIN needs about two periods of the lowest f0, so 46 ms
+// covers fmin ≈ 45 Hz.
+
+const PITCH_WINDOW_MS = 46;
 
 const PITCH_DEFAULTS = {
     threshold: 0.15,       // YIN absolute threshold on the normalised difference

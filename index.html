@@ -6,7 +6,7 @@
     <title>Seeing Sound</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-    <link rel="stylesheet" href="static/css/styles.css?v=20261012c">
+    <link rel="stylesheet" href="static/css/styles.css?v=20261110a">
     <script>
         // Phones: size the app to the area actually visible between the browser's
         // bars (100vh / 100dvh are not reliable there, e.g. Chrome on iOS).
@@ -161,26 +161,24 @@
                 <div class="method-params" data-method="stft">
                     <span class="sub-head">STFT settings</span>
                     <div class="field">
-                        <span class="field-label">FFT size</span>
-                        <div class="segmented-control" style="--sc-count: 3">
-                            <input type="radio" name="fft-radio" id="fft-low" value="1024">
-                            <label for="fft-low">1024</label>
-                            <input type="radio" name="fft-radio" id="fft-medium" value="2048" checked>
-                            <label for="fft-medium">2048</label>
-                            <input type="radio" name="fft-radio" id="fft-high" value="4096">
-                            <label for="fft-high">4096</label>
-                            <span class="selection-indicator"></span>
+                        <div class="field-row"><label for="windowMs" class="field-label">Window length</label><span class="mono" id="windowMsValue">46 ms</span></div>
+                        <input type="range" id="windowMs" min="0" max="1000" step="1" value="806" class="slider" aria-describedby="windowMsHint">
+                        <div class="field-row"><span class="field-sublabel">← Pulses · formants</span><span class="field-sublabel">Harmonics →</span></div>
+                        <div class="chip-row">
+                            <button type="button" class="chip window-chip" data-window-ms="5">Wideband 5 ms</button>
+                            <button type="button" class="chip window-chip" data-window-ms="15">Balanced 15 ms</button>
+                            <button type="button" class="chip window-chip" data-window-ms="40">Narrowband 40 ms</button>
                         </div>
-                        <p class="panel-hint">Larger = finer frequency detail, slower response. Also the pitch tracker’s window: 2048 reaches f₀ ≈ 50 Hz, 1024 only ≈ 95 Hz.</p>
+                        <p class="panel-hint" id="windowMsHint">Short windows follow each glottal pulse and show formants as broad bands; long windows resolve the individual harmonics but blur fast changes. The bandwidth shown is how close two frequencies can be and still separate. The pitch tracker has its own fixed window.</p>
                     </div>
-                    <div class="field is-planned" title="Planned">
-                        <span class="field-label">Window <em>planned</em></span>
+                    <div class="field">
+                        <span class="field-label">Window shape</span>
                         <div class="segmented-control" style="--sc-count: 3">
                             <input type="radio" name="window-radio" id="win-blackman" value="blackman" checked>
                             <label for="win-blackman">Blackman</label>
-                            <input type="radio" name="window-radio" id="win-hann" value="hann" disabled>
+                            <input type="radio" name="window-radio" id="win-hann" value="hann">
                             <label for="win-hann">Hann</label>
-                            <input type="radio" name="window-radio" id="win-gauss" value="gauss" disabled>
+                            <input type="radio" name="window-radio" id="win-gauss" value="gauss">
                             <label for="win-gauss">Gauss</label>
                             <span class="selection-indicator"></span>
                         </div>
@@ -542,20 +540,21 @@
     </main>
 </div>
 
-    <script src="static/js/config.js?v=20261012c"></script>
-    <script src="static/js/gl/glsl.js?v=20261012c"></script>
-    <script src="static/js/gl/mat4.js?v=20261012c"></script>
-    <script src="static/js/core.js?v=20261012c"></script>
-    <script src="static/js/analysis/representations.js?v=20261012c"></script>
-    <script src="static/js/render/spectrogram2d.js?v=20261012c"></script>
-    <script src="static/js/render/spectrogram3d.js?v=20261012c"></script>
-    <script src="static/js/audio/pitch.js?v=20261012c"></script>
-    <script src="static/js/render/pitchContour.js?v=20261012c"></script>
-    <script src="static/js/ui/notify.js?v=20261012c"></script>
-    <script src="static/js/ui/controls.js?v=20261012c"></script>
-    <script src="static/js/ui/layout.js?v=20261012c"></script>
-    <script src="static/js/ui/presets.js?v=20261012c"></script>
-    <script src="static/js/main.js?v=20261012c"></script>
+    <script src="static/js/config.js?v=20261110a"></script>
+    <script src="static/js/audio/stft.js?v=20261110a"></script>
+    <script src="static/js/gl/glsl.js?v=20261110a"></script>
+    <script src="static/js/gl/mat4.js?v=20261110a"></script>
+    <script src="static/js/core.js?v=20261110a"></script>
+    <script src="static/js/analysis/representations.js?v=20261110a"></script>
+    <script src="static/js/render/spectrogram2d.js?v=20261110a"></script>
+    <script src="static/js/render/spectrogram3d.js?v=20261110a"></script>
+    <script src="static/js/audio/pitch.js?v=20261110a"></script>
+    <script src="static/js/render/pitchContour.js?v=20261110a"></script>
+    <script src="static/js/ui/notify.js?v=20261110a"></script>
+    <script src="static/js/ui/controls.js?v=20261110a"></script>
+    <script src="static/js/ui/layout.js?v=20261110a"></script>
+    <script src="static/js/ui/presets.js?v=20261110a"></script>
+    <script src="static/js/main.js?v=20261110a"></script>
     <script src="static/js/diffusion/bridge.js?v=20261020a"></script>
 </body>
 </html>
