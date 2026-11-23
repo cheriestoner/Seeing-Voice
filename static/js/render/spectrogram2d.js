@@ -42,6 +42,8 @@ class Spectrogram2DMethods {
             uniform float u_bin_hz;   // FFT bin width (Hz), for the warped scales
             uniform int u_colormap; // 0 = experimental, 1 = viridis, 2 = greyscale, 3 = reversed greyscale
             uniform int u_flip;    // 0 = scroll left (←), 1 = scroll right (→)
+            uniform int u_layout;  // TIME_LAYOUTS id: 0 edge, 1 mirror, 2 centre head, 3 radial
+            uniform float u_aspect; // canvas width / height (radial layout)
             uniform int u_bg_mode; // 0 = dark, 1 = transparent, 2 = white
             uniform int u_soft_edge;      // 0 = hard, 1 = soft (only used when transparent)
             uniform float u_visible_seconds; // age of the data at the left edge
@@ -66,14 +68,41 @@ class Spectrogram2DMethods {
                 // Flip x-axis for right-scrolling direction
                 float uvx = u_flip == 1 ? (1.0 - v_uv.x) : v_uv.x;
 
+                // t: position on the time axis, 1 = now, 0 = oldest shown.
+                // fy: frequency coordinate, 0 = bottom of the axis, 1 = top.
+                float t;
+                float fy = v_uv.y;
+                bool outside;
+                if (u_layout == 3) {
+                    // Radial: now on a small inner ring, history expands outward;
+                    // frequency is the angle from the bottom (mirrored left / right)
+                    vec2 pr = vec2((v_uv.x - 0.5) * u_aspect, v_uv.y - 0.5);
+                    float r = length(pr);
+                    float R = ${RADIAL_OUTER.toFixed(4)};
+                    float r0 = R * ${RADIAL_INNER.toFixed(4)};
+                    outside = r > R || r < r0;
+                    t = 1.0 - (r - r0) / (R - r0);
+                    fy = atan(abs(pr.x), -pr.y) / 3.14159265;
+                } else if (u_layout == 1) {
+                    // Mirror: now on the centre line, the same history on both sides
+                    outside = uvx > u_data_hi || uvx < u_data_lo;
+                    t = 1.0 - abs(uvx - 0.5) / (0.5 - u_data_lo);
+                } else if (u_layout == 2) {
+                    // Centre head: now on the centre line, history on one side only
+                    outside = uvx > 0.5 || uvx < u_data_lo;
+                    t = 1.0 - (0.5 - uvx) / (0.5 - u_data_lo);
+                } else {
+                    outside = uvx > u_data_hi || uvx < u_data_lo;
+                    t = (uvx - u_data_lo) / (u_data_hi - u_data_lo);
+                }
+
                 // Outside the data area (e.g. behind the Hz labels): background
-                if (uvx > u_data_hi || uvx < u_data_lo) {
+                if (outside) {
                     if (u_bg_mode == 1) gl_FragColor = vec4(0.0);
                     else gl_FragColor = vec4(backgroundColor, 1.0);
                     return;
                 }
 
-                float t = (uvx - u_data_lo) / (u_data_hi - u_data_lo);
                 float x;
                 float age;
                 if (u_sweep == 1) {
@@ -90,7 +119,7 @@ class Spectrogram2DMethods {
                 }
 
                 // Y mapping (Frequency Zoom) — shared helper
-                float y = freqTexY(v_uv.y);
+                float y = freqTexY(fy);
 
                 float amp = texture2D(u_texture, vec2(x, y)).r;
 
@@ -98,12 +127,12 @@ class Spectrogram2DMethods {
                 // fades out by its own loudness (quiet first), not by a mask
                 amp -= age / u_persistence * u_ref_level * (1.0 - u_threshold);
 
-                vec3 color = getColor(v_uv.y, amp);
+                vec3 color = getColor(fy, amp);
 
                 // Spawn flash — brighten or darken at the newest data edge depending on colormap
                 if (amp >= u_threshold) {
                     float distFromEdge = age * ${COLUMN_RATE.toFixed(1)} / u_sweep_cols * (u_data_hi - u_data_lo);
-                    if (u_sweep == 0) distFromEdge = (1.0 - t) * (u_data_hi - u_data_lo);
+                    if (u_sweep == 0) distFromEdge = (1.0 - t) * (u_layout == 0 ? (u_data_hi - u_data_lo) : 0.5);
                     float boostFactor = u_boost_intensity * exp(-distFromEdge * 40.0);
                     if (u_colormap == 3) {
                         // Ink: deepen the ink by the same factor the other maps brighten by.
@@ -197,6 +226,8 @@ class Spectrogram2DMethods {
         gl.uniform1f(gl.getUniformLocation(p, 'u_bin_hz'), s.binHz);
         gl.uniform1i(gl.getUniformLocation(p, 'u_colormap'), s.colormapMode);
         gl.uniform1i(gl.getUniformLocation(p, 'u_flip'), (s.flip ?? this.settings.scrollDirection === 'right') ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(p, 'u_layout'), s.layout || 0);
+        gl.uniform1f(gl.getUniformLocation(p, 'u_aspect'), s.aspect || 1);
         gl.uniform1i(gl.getUniformLocation(p, 'u_sweep'), s.sweep ? 1 : 0);
         gl.uniform1f(gl.getUniformLocation(p, 'u_sweep_cols'), s.sweepCols || 1);
         gl.uniform1f(gl.getUniformLocation(p, 'u_newest_mod'), s.newestMod || 0);

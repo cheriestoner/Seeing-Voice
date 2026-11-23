@@ -234,6 +234,11 @@ class ControlsMethods {
             });
         });
 
+        // Time layout: where "now" sits (edge / mirror / centre head / radial)
+        document.querySelectorAll('input[name="timelayout-radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => this.setTimeLayout(e.target.value));
+        });
+
         // Background style control
         document.querySelectorAll('input[name="background-radio"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
@@ -468,6 +473,7 @@ class ControlsMethods {
         update('lifter-radio', 'off');
         update('speed-radio', this.settings.scrollSpeed);
         update('direction-radio', this.settings.scrollDirection);
+        update('timelayout-radio', this.settings.timeLayout);
         update('scale-radio', this.settings.scale);
         update('background-radio', this.settings.backgroundStyle);
         update('style3d-radio', this.settings.spec3dStyle);

@@ -62,6 +62,9 @@ class PresetsMethods {
         setRadio('colormap-radio', s.colormap);
         setRadio('speed-radio', s.scrollSpeed);
         setRadio('direction-radio', s.scrollDirection);
+        // Presets saved before the time layout existed were all edge layout
+        if (!TIME_LAYOUTS[s.timeLayout]) this.settings.timeLayout = 'edge';
+        setRadio('timelayout-radio', this.settings.timeLayout);
         setRadio('background-radio', s.backgroundStyle);
         // pitch mapping (presets from before it existed keep the defaults)
         const P = { pitchStyle: 'ribbon', pitchTimeMode: 'scroll', pitchSweepS: 4, pitchK: 2.0, pitchRef: 'moving', pitchRefMs: 300, pitchScale: 'log', pitchMin: 70, pitchMax: 500,

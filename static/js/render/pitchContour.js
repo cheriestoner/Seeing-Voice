@@ -190,14 +190,17 @@ class PitchMethods {
         ctx.clearRect(0, 0, W, H);
 
         const style = s.pitchStyle || 'line';
-        const flip = s.scrollDirection === 'right';
+        const layout = sh.layout || 0;               // TIME_LAYOUTS id
+        const flip = (layout === 0 || layout === 2) && s.scrollDirection === 'right';
         // data area in screen px; newest at `x0`, older toward `dir`
         // full data area (clip) and the time axis inside it (newest at x0)
         const cLo = sh.clipLo ?? sh.dataLo, cHi = sh.clipHi ?? sh.dataHi;
-        const loPx = (flip ? 1 - cHi : cLo) * W;
-        const hiPx = (flip ? 1 - cLo : cHi) * W;
-        const axLo = (flip ? 1 - sh.dataHi : sh.dataLo) * W;
-        const axHi = (flip ? 1 - sh.dataLo : sh.dataHi) * W;
+        // (the centred layouts are symmetric about the centre line, so no flip)
+        const fl = layout === 0 && flip;
+        const loPx = (fl ? 1 - cHi : cLo) * W;
+        const hiPx = (fl ? 1 - cLo : cHi) * W;
+        const axLo = (fl ? 1 - sh.dataHi : sh.dataLo) * W;
+        const axHi = (fl ? 1 - sh.dataLo : sh.dataHi) * W;
         const ground = s.backgroundStyle === 'white' ? [255, 255, 255] : [7, 7, 15];
         const lmin = Math.log2(s.pitchMin), lmax = Math.log2(s.pitchMax);
         const g = {
@@ -215,9 +218,18 @@ class PitchMethods {
             paper: s.backgroundStyle === 'white',
             sweep: !!sh.sweep,
             sweepCols: sh.sweepCols,
+            layout,
+            cx: W / 2, cy: H / 2,
+            rOuter: RADIAL_OUTER * H,
+            rInner: RADIAL_OUTER * RADIAL_INNER * H,
         };
-        // sweep: one pass of columns spans the time axis; nothing older is on screen
-        g.nVis = g.sweep ? g.sweepCols : Math.ceil((axHi - axLo) / g.pxPerCol) + 2;
+        // halves of the history drawn: both for mirror / radial, one otherwise
+        g.sides = layout === 1 || layout === 3 ? [1, -1] : [1];
+        // the head: once on the centre line (mirror), on both sides of the inner ring (radial)
+        g.headSides = layout === 3 ? [1, -1] : [1];
+        // columns on screen: sweep = one pass; otherwise the length of the time axis
+        const timePx = layout === 0 ? axHi - axLo : layout === 3 ? g.rOuter - g.rInner : g.cx - loPx;
+        g.nVis = g.sweep ? g.sweepCols : Math.ceil(timePx / g.pxPerCol) + 2;
         g.axLo = axLo; g.axHi = axHi;
         const k = s.pitchK;
         g.shown = (i) => {
@@ -243,7 +255,7 @@ class PitchMethods {
             ctx.setLineDash([2, 4]);
             ctx.lineWidth = 1.25;
             ctx.strokeStyle = g.paper ? 'rgba(28,28,26,0.55)' : 'rgba(255,255,255,0.55)';
-            this._pitchTrack(g, (i) => P.lf[i], (a, b, al) => { ctx.globalAlpha = al; this._pitchSeg(ctx, a, b); });
+            for (const sd of g.sides) this._pitchTrack(g, (i) => P.lf[i], (a, b, al) => { ctx.globalAlpha = al; this._pitchSeg(ctx, a, b); }, sd);
             ctx.setLineDash([]);
         }
 
@@ -253,9 +265,9 @@ class PitchMethods {
         else {
             ctx.strokeStyle = s.pitchColor;
             ctx.lineWidth = 9;      // soft halo
-            this._pitchTrack(g, g.shown, (a, b, al) => { ctx.globalAlpha = al * 0.22; this._pitchSeg(ctx, a, b); });
+            for (const sd of g.sides) this._pitchTrack(g, g.shown, (a, b, al) => { ctx.globalAlpha = al * 0.22; this._pitchSeg(ctx, a, b); }, sd);
             ctx.lineWidth = 2.75;   // core line
-            this._pitchTrack(g, g.shown, (a, b, al) => { ctx.globalAlpha = al; this._pitchSeg(ctx, a, b); });
+            for (const sd of g.sides) this._pitchTrack(g, g.shown, (a, b, al) => { ctx.globalAlpha = al; this._pitchSeg(ctx, a, b); }, sd);
         }
 
         ctx.restore();
@@ -271,13 +283,39 @@ class PitchMethods {
         return g.x0 + g.dir * (g.pos - 1 - c) * g.pxPerCol;
     }
 
+    /**
+     * Screen point for a value `l` (log2 Hz) that is `ageCols` columns old,
+     * in the current time layout. `side` (+1 / −1) picks the half in the
+     * mirrored layouts. Not used for the sweep (see _pitchPt).
+     */
+    _pitchAt(g, ageCols, l, side = 1) {
+        const y = g.yOf(l);
+        switch (g.layout) {
+            case 1: return { x: g.cx + side * ageCols * g.pxPerCol, y };
+            case 2: return { x: g.cx + g.dir * ageCols * g.pxPerCol, y };
+            case 3: {
+                // radius = age, angle = pitch (0 at the bottom … π at the top)
+                const r = g.rInner + ageCols * g.pxPerCol;
+                const th = Math.PI * Math.max(0, Math.min(1, 1 - y / g.H));
+                return { x: g.cx + side * r * Math.sin(th), y: g.cy + r * Math.cos(th) };
+            }
+            default: return { x: g.x0 + g.dir * ageCols * g.pxPerCol, y };
+        }
+    }
+
+    /** Screen point of column `c` with value `l` (handles the sweep slots). */
+    _pitchPt(g, c, l, side = 1) {
+        if (g.sweep) return { x: this._pitchX(g, c), y: g.yOf(l) };
+        return this._pitchAt(g, g.pos - 1 - c, l, side);
+    }
+
     _pitchSeg(ctx, a, b) { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
 
     /**
      * Walk the visible columns newest → oldest, one callback per voiced
      * segment, with its age-based opacity. valueOf(i) → log2 frequency or NaN.
      */
-    _pitchTrack(g, valueOf, style) {
+    _pitchTrack(g, valueOf, style, side = 1) {
         let prev = null;
         for (let c = g.newest; c > g.newest - g.nVis && c >= 0; c--) {
             const i = c % this.texWidth;
@@ -287,7 +325,8 @@ class PitchMethods {
             if (g.sweep && (c + 1) % g.sweepCols === 0) prev = null;
             // never draw a jump as a connecting line (compare raw f0, independent of k)
             if (prev && Math.abs(this._pitch.lf[i] - this._pitch.lf[prev.i]) > PITCH_BREAK_OCT) prev = null;
-            const p = { x: this._pitchX(g, c), y: g.yOf(v), c, i };
+            const q = this._pitchPt(g, c, v, side);
+            const p = { x: q.x, y: q.y, c, i };
             if (prev) {
                 const ageS = (g.pos - 1 - c) / COLUMN_RATE;
                 const alpha = Math.max(0, 1 - ageS / g.persist);
@@ -347,7 +386,7 @@ class PitchMethods {
     _drawPitchRibbon(g) {
         const ctx = g.ctx, P = this._pitch;
         this._pitchBlend(g);
-        for (let pass = 0; pass < 2; pass++) {
+        for (let pass = 0; pass < 2; pass++) for (const sd of g.sides) {
             this._pitchTrack(g, g.shown, (a, b, al) => {
                 const age = 1 - al;
                 const fade = Math.pow(al, 1.6);
@@ -357,10 +396,19 @@ class PitchMethods {
                 ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${pass === 0 ? 0.10 * fade : 0.85 * fade})`;
                 ctx.lineWidth = pass === 0 ? w * 3.2 : Math.max(0.6, w);
                 this._pitchSeg(ctx, a, b);
-            });
+            }, sd);
         }
+        this._pitchHeads(g);
+    }
+
+    /** Draw the comet head(s) at the newest voiced column. */
+    _pitchHeads(g) {
         const h = this._pitchHeadCol(g);
-        if (h) this._pitchHead(g, this._pitchX(g, h.c), g.yOf(g.shown(h.i)), h.amp, Math.min(1, h.amp * 1.8) * h.fade);
+        if (!h) return;
+        for (const sd of g.headSides) {
+            const q = this._pitchPt(g, h.c, g.shown(h.i), sd);
+            this._pitchHead(g, q.x, q.y, h.amp, Math.min(1, h.amp * 1.8) * h.fade);
+        }
     }
 
     // ── B · Particle plume: the head sheds sparks that drift back ─────────
@@ -407,41 +455,56 @@ class PitchMethods {
             sparks[w++] = p;
             if (lifeS < 0) continue;
             const a = lifeS / p.max;
-            const x = g.sweep
-                ? this._pitchX(g, Math.round(p.c)) - lifeS * PITCH_SWEEP_DRIFT_PX * p.speed
-                : g.x0 + g.dir * lifeS * COLUMN_RATE * g.pxPerCol * p.speed;
-            const y = g.yOf(p.l) + p.dy;
             const col = this._pitchHeat(a, g.paper);
             ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${(g.paper ? 0.85 : 0.75) * (1 - a)})`;
-            ctx.beginPath(); ctx.arc(x, y, p.size * (1 - 0.5 * a), 0, Math.PI * 2); ctx.fill();
+            for (const sd of g.sides) {
+                let x, y;
+                if (g.sweep) {
+                    x = this._pitchX(g, Math.round(p.c)) - lifeS * PITCH_SWEEP_DRIFT_PX * p.speed;
+                    y = g.yOf(p.l) + p.dy;
+                } else {
+                    const q = this._pitchAt(g, lifeS * COLUMN_RATE * p.speed, p.l, sd);
+                    x = q.x; y = q.y + p.dy;
+                }
+                ctx.beginPath(); ctx.arc(x, y, p.size * (1 - 0.5 * a), 0, Math.PI * 2); ctx.fill();
+            }
         }
         sparks.length = w;
 
-        const h = this._pitchHeadCol(g);
-        if (h) this._pitchHead(g, this._pitchX(g, h.c), g.yOf(g.shown(h.i)), h.amp, Math.min(1, h.amp * 1.8) * h.fade);
+        this._pitchHeads(g);
     }
 
     // ── C · Free flight: pitch × loudness plane, no time axis ─────────────
     _drawPitchFlight(g) {
         const ctx = g.ctx, P = this._pitch;
         const span = g.hiPx - g.loPx;
-        // louder → away from the frequency labels' side, like the time axis
-        const xOfAmp = (amp) => g.flip ? g.hiPx - span * (0.10 + 0.74 * amp) : g.loPx + span * (0.10 + 0.74 * amp);
+        const centred = g.layout !== 0;
+        // edge: louder → away from the frequency labels' side, like the time axis.
+        // centred layouts: quiet at the centre line, louder → outward (both sides
+        // for mirror / radial, the history side for the centre head)
+        const half = Math.min(g.cx - g.loPx, g.hiPx - g.cx);
+        const xOfAmp = (amp, side = 1) => centred
+            ? g.cx + (g.layout === 2 ? g.dir : side) * half * (0.04 + 0.84 * amp)
+            : g.flip ? g.hiPx - span * (0.10 + 0.74 * amp) : g.loPx + span * (0.10 + 0.74 * amp);
 
         ctx.save();
         ctx.font = '11px ui-monospace, "SF Mono", Menlo, monospace';
         ctx.fillStyle = g.paper ? 'rgba(28,28,26,0.45)' : 'rgba(255,255,255,0.45)';
-        ctx.textAlign = g.flip ? 'left' : 'right';
-        ctx.fillText(g.flip ? '← louder' : 'louder →', g.flip ? g.loPx + 10 : g.hiPx - 10, g.H - 10);
+        const leftLabel = centred ? (g.layout !== 2 || g.dir < 0) : g.flip;
+        const rightLabel = centred ? (g.layout !== 2 || g.dir > 0) : !g.flip;
+        if (leftLabel) { ctx.textAlign = 'left'; ctx.fillText('← louder', g.loPx + 10, g.H - 10); }
+        if (rightLabel) { ctx.textAlign = 'right'; ctx.fillText('louder →', g.hiPx - 10, g.H - 10); }
         ctx.restore();
 
         this._pitchBlend(g);
-        const pts = [];
         const maxCols = Math.ceil(g.persist * COLUMN_RATE) + 1;
+        const flightSides = g.layout === 1 || g.layout === 3 ? [1, -1] : [1];
+        for (const sd of flightSides) {
+        const pts = [];
         for (let c = g.newest; c > g.newest - maxCols && c >= 0; c--) {
             const i = c % this.texWidth;
             const l = g.shown(i);
-            pts.push(Number.isFinite(l) ? { x: xOfAmp(P.amp[i]), y: g.yOf(l), c, i } : null);
+            pts.push(Number.isFinite(l) ? { x: xOfAmp(P.amp[i], sd), y: g.yOf(l), c, i } : null);
         }
         for (let pass = 0; pass < 2; pass++) {
             for (let n = 0; n + 1 < pts.length; n++) {
@@ -458,8 +521,9 @@ class PitchMethods {
                 this._pitchSeg(ctx, a, b);
             }
         }
+        }
         const h = this._pitchHeadCol(g);
-        if (h) this._pitchHead(g, xOfAmp(h.amp), g.yOf(g.shown(h.i)), h.amp, Math.min(1, h.amp * 1.8) * h.fade);
+        if (h) for (const sd of flightSides) this._pitchHead(g, xOfAmp(h.amp, sd), g.yOf(g.shown(h.i)), h.amp, Math.min(1, h.amp * 1.8) * h.fade);
     }
 }
 

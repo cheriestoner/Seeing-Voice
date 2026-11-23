@@ -423,7 +423,22 @@
         <section class="panel-section" data-section="time">
             <h2>Time</h2>
             <p class="panel-hint">Shared by all mappings · showing for <b class="scope-name">2D spectrogram</b>.</p>
-            <div class="field" data-applies="pitch">
+            <div class="field" id="timeLayoutField">
+                <span class="field-label">Layout</span>
+                <div class="segmented-control" style="--sc-count: 4">
+                    <input type="radio" name="timelayout-radio" id="timelayout-edge" value="edge">
+                    <label for="timelayout-edge">Edge</label>
+                    <input type="radio" name="timelayout-radio" id="timelayout-mirror" value="mirror" checked>
+                    <label for="timelayout-mirror">Mirror</label>
+                    <input type="radio" name="timelayout-radio" id="timelayout-head" value="head">
+                    <label for="timelayout-head">Centre</label>
+                    <input type="radio" name="timelayout-radio" id="timelayout-radial" value="radial">
+                    <label for="timelayout-radial">Radial</label>
+                    <span class="selection-indicator"></span>
+                </div>
+                <p class="panel-hint" id="timeLayoutHint">Now is the vertical centre line; the same history flows out to both sides, symmetrically.</p>
+            </div>
+            <div class="field" id="timeModeField" data-applies="pitch">
                 <span class="field-label">Mode</span>
                 <div class="segmented-control" style="--sc-count: 2">
                     <input type="radio" name="timemode-radio" id="timemode-scroll" value="scroll">
@@ -451,7 +466,7 @@
                 </div>
                 <p class="panel-hint">How much space one second takes: across the screen in 2D and Pitch × k, in depth in 3D.</p>
             </div>
-            <div class="field" id="directionField" data-applies="spec2d pitch">
+            <div class="field" id="directionField" data-applies="spec2d spec3d pitch">
                 <span class="field-label">Direction</span>
                 <div class="segmented-control" style="--sc-count: 2">
                     <input type="radio" name="direction-radio" id="direction-left" value="left" checked>

@@ -602,6 +602,8 @@ button { cursor: pointer; }
 .spectrogram-container[data-ground="white"] .frequency-scale,
 .spectrogram-container[data-ground="transparent"] .frequency-scale { color: var(--ink-3); }
 .spectrogram-container.view-3d .frequency-scale { display: none; }
+/* radial layout: frequency is an angle, so the vertical Hz labels do not apply */
+.spectrogram-container.layout-radial .frequency-scale { display: none; }
 
 /* Start / stop */
 .stage-controls {

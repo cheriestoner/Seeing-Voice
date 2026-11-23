@@ -37,6 +37,19 @@ const SCROLL_SPEEDS = {
 // The 3D grid keeps its previous history length: canvas width / (1.5 × speed) columns
 const SCROLL_3D_FACTOR = 1.5;
 
+// ── Time layout: where "now" sits on the canvas ──────────────────────────
+// `id` is passed to the shaders as u_layout. The centred layouts keep the
+// eye on the middle of the canvas instead of an edge.
+const TIME_LAYOUTS = {
+    edge:   { id: 0, label: 'Edge',   hint: 'Classic: the newest data enters at one side edge and scrolls across the screen.' },
+    mirror: { id: 1, label: 'Mirror', hint: 'Now is the vertical centre line; the same history flows out to both sides, symmetrically.' },
+    head:   { id: 2, label: 'Centre', hint: 'Now is the vertical centre line; history flows to one side only (set by Direction), like a playhead.' },
+    radial: { id: 3, label: 'Radial', hint: 'Now is a small ring at the centre and history expands outward like a ripple. Frequency (or pitch) becomes the angle: low at the bottom, high at the top, mirrored left and right.' },
+};
+// Radial layout geometry, as fractions of the canvas height / outer radius
+const RADIAL_OUTER = 0.48;   // outer radius (oldest data) = 0.48 × canvas height
+const RADIAL_INNER = 0.12;   // inner ring ("now") = 0.12 × outer radius
+
 // ── Frequency axis scales (pipeline stage B) ─────────────────────────────
 // Each scale is a monotonic warp f (Hz) → u and its inverse. The display axis
 // is linear in u, so everything that maps frequency to screen position (the

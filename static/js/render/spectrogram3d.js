@@ -18,6 +18,10 @@ const CAMERA_PRESETS_3D = {
     oblique: { az:  0.75,        el: 0.50, dist: 2.7,  target: [0, 0.1, 0] },
     top:     { az: 0,            el: 1.45, dist: 2.6,  target: [0, 0, 0] },
 };
+// In the centred time layouts "now" is in the middle of the plane, so the
+// Front preset looks at the centre from the low-frequency side instead of
+// along the time axis from the newest edge.
+const CAMERA_FRONT_CENTRED_3D = { az: 0, el: 1.0, dist: 3.1, target: [0, 0.0, 0] };
 
 class Spectrogram3DMethods {
     /**
@@ -52,6 +56,8 @@ class Spectrogram3DMethods {
             uniform mat4 u_mvp;
             uniform float u_height_scale;
             uniform int u_lighting;
+            uniform int u_layout;          // TIME_LAYOUTS id (0 edge, 1 mirror, 2 centre head, 3 radial)
+            uniform float u_side;          // +1 / −1: which half a centred layout is drawing
             varying float v_amp;
             varying float v_freq;
             varying float v_time;          // 1 = newest edge, 0 = oldest
@@ -90,10 +96,29 @@ class Spectrogram3DMethods {
                 float t = (a_grid.x - u_frac) / (u_ncols - 1.0);
                 v_time = t;
 
-                // Plane: x = time [-1 old, +1 new], y = amplitude,
+                // Edge layout — plane: x = time [-1 old, +1 new], y = amplitude,
                 // z = frequency [+1 low, -1 high] so that, seen from the newest
-                // edge (Front camera), low frequencies are on the left
-                vec3 pos = vec3(t * 2.0 - 1.0, h, 1.0 - a_grid.y * 2.0);
+                // edge (Front camera), low frequencies are on the left.
+                // Centred layouts put now at x = 0 and history outward (u_side);
+                // radial bends the frequency axis into a half circle (low toward +z).
+                // the newest vertex column is pinned to "now" so the two halves of a
+                // centred layout meet without a seam (the first segment stretches instead)
+                float age01 = a_grid.x >= u_ncols - 1.0 ? 0.0 : 1.0 - t;
+                vec3 pos;
+                float dxPerCol;
+                if (u_layout == 3) {
+                    float r0 = ${RADIAL_INNER.toFixed(4)};
+                    float r = r0 + age01 * (1.0 - r0);
+                    float th = a_grid.y * 3.14159265;
+                    pos = vec3(u_side * r * sin(th), h, r * cos(th));
+                    dxPerCol = 1.0;
+                } else if (u_layout == 0) {
+                    pos = vec3(t * 2.0 - 1.0, h, 1.0 - a_grid.y * 2.0);
+                    dxPerCol = 2.0 / (u_ncols - 1.0);
+                } else {
+                    pos = vec3(u_side * age01, h, 1.0 - a_grid.y * 2.0);
+                    dxPerCol = -u_side / (u_ncols - 1.0);
+                }
 
                 if (u_lighting == 1) {
                     float dv = 1.0 / float(${GRID_ROWS - 1});
@@ -101,7 +126,7 @@ class Spectrogram3DMethods {
                     float hR = heightAt(a_grid + vec2( 1.0, 0.0));
                     float hD = heightAt(a_grid + vec2(0.0, -dv));
                     float hU = heightAt(a_grid + vec2(0.0,  dv));
-                    float sx = (hR - hL) * (u_ncols - 1.0) / 4.0;   // world dx per column = 2/(N-1)
+                    float sx = (hR - hL) / (2.0 * dxPerCol);
                     float sz = (hU - hD) / (4.0 * dv);
                     v_normal = normalize(vec3(-sx, 1.0, sz));   // z is flipped
                 } else {
@@ -249,23 +274,33 @@ class Spectrogram3DMethods {
         gl.uniform1i(gl.getUniformLocation(p, 'u_colormap'), s.colormapMode);
         gl.uniformMatrix4fv(gl.getUniformLocation(p, 'u_mvp'), false, this._mvp);
         gl.uniform1f(gl.getUniformLocation(p, 'u_height_scale'), this.settings.heightScale3d);
-        gl.uniform1i(gl.getUniformLocation(p, 'u_lighting'), (this.settings.viewMode === 'surface' && this.settings.spec3dLighting) ? 1 : 0);
+        // lighting assumes a flat (time × frequency) grid, so it is off in the radial layout
+        gl.uniform1i(gl.getUniformLocation(p, 'u_lighting'), (this.settings.viewMode === 'surface' && this.settings.spec3dLighting && s.layout !== 3) ? 1 : 0);
+        gl.uniform1i(gl.getUniformLocation(p, 'u_layout'), s.layout || 0);
         gl.uniform1i(gl.getUniformLocation(p, 'u_fade_mode'), this.settings.spec3dFade === 'distance' ? 1 : 0);
         const ground = bg === 'white' ? [1, 1, 1] : [0.027, 0.027, 0.067];
         gl.uniform3f(gl.getUniformLocation(p, 'u_ground'), ground[0], ground[1], ground[2]);
 
-        if (this.settings.viewMode === 'wireframe') {
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.lineIndexBuffer);
-            gl.drawElements(gl.LINES, (n - 1) * this.linesPerSegment, gl.UNSIGNED_SHORT, 0);
-        } else {
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.triIndexBuffer);
-            gl.drawElements(gl.TRIANGLES, (n - 1) * this.trisPerSegment, gl.UNSIGNED_SHORT, 0);
+        // centred layouts draw the history once per side
+        const sides = s.layout === 1 || s.layout === 3 ? [1, -1]
+            : s.layout === 2 ? [this.settings.scrollDirection === 'right' ? 1 : -1] : [1];
+        const sideLoc = gl.getUniformLocation(p, 'u_side');
+        for (const side of sides) {
+            gl.uniform1f(sideLoc, side);
+            if (this.settings.viewMode === 'wireframe') {
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.lineIndexBuffer);
+                gl.drawElements(gl.LINES, (n - 1) * this.linesPerSegment, gl.UNSIGNED_SHORT, 0);
+            } else {
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.triIndexBuffer);
+                gl.drawElements(gl.TRIANGLES, (n - 1) * this.trisPerSegment, gl.UNSIGNED_SHORT, 0);
+            }
         }
     }
 
     /** Move the orbit camera to a named preset (CAMERA_PRESETS_3D). */
     applyCameraPreset(name) {
-        const c = CAMERA_PRESETS_3D[name] || CAMERA_PRESETS_3D.front;
+        let c = CAMERA_PRESETS_3D[name] || CAMERA_PRESETS_3D.front;
+        if ((name === 'front' || !CAMERA_PRESETS_3D[name]) && this.settings.timeLayout && this.settings.timeLayout !== 'edge') c = CAMERA_FRONT_CENTRED_3D;
         this._cam = { az: c.az, el: c.el, dist: c.dist, target: c.target.slice() };
         this.settings.spec3dCamera = name;
     }

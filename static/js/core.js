@@ -37,6 +37,13 @@ class SeeingSound {
             noiseThreshold: 0,
             scrollSpeed: 'medium',
             scrollDirection: 'left',
+            // Where "now" sits on the canvas (all mappings):
+            //   'edge'   newest at one side edge, history scrolls across (classic)
+            //   'mirror' newest on the vertical centre line, history flows out to both sides
+            //   'head'   newest on the centre line, history flows to one side only
+            //   'radial' newest on a small ring at the centre, history expands outward;
+            //            frequency / pitch becomes the angle (low at the bottom, mirrored)
+            timeLayout: 'mirror',
             sampleRate: 44100, // Will be updated with actual sample rate
             analysis: 'stft', // stage A: REPRESENTATIONS id (analysis/representations.js)
             scale: 'linear', // stage B: FREQ_SCALES id — 'linear' | 'log' | 'mel' | 'bark' | 'erb'
@@ -317,13 +324,30 @@ class SeeingSound {
         const heightScale = bins / this.texHeight;   // portion of the texture in use
         const scrollSpeed = SCROLL_SPEEDS[this.settings.scrollSpeed];
         const canvasWidth = this.canvas.width / window.devicePixelRatio;
+        const canvasHeight = this.canvas.height / window.devicePixelRatio;
+        const layout = TIME_LAYOUTS[this.settings.timeLayout] ? this.settings.timeLayout : 'edge';
+        const layoutId = TIME_LAYOUTS[layout].id;
         // Newest data at the edge the scroll comes from; with leftward scroll
         // that is the right edge, so stop short of the Hz label column.
         const gutter = Math.min(this._labelGutterPx || 0, canvasWidth * 0.5);
-        const sweep = this.settings.mapping === 'pitch' && this.settings.pitchTimeMode === 'sweep';
-        const flip = !sweep && this.settings.scrollDirection === 'right';   // a sweep always writes left → right
-        const dataLo = flip ? gutter / canvasWidth : 0;          // in shader (flipped) coords
-        const dataHi = flip ? 1 : 1 - gutter / canvasWidth;
+        // A sweep writes left → right across the whole width, so it only exists in the edge layout
+        const sweep = layout === 'edge' && this.settings.mapping === 'pitch' && this.settings.pitchTimeMode === 'sweep';
+        // Direction only means something when history runs one way (edge, head)
+        const flip = !sweep && (layout === 'edge' || layout === 'head') && this.settings.scrollDirection === 'right';
+        let dataLo, dataHi;
+        if (layout === 'edge') {
+            dataLo = flip ? gutter / canvasWidth : 0;            // in shader (flipped) coords
+            dataHi = flip ? 1 : 1 - gutter / canvasWidth;
+        } else {
+            // centred layouts keep the data symmetric about the centre line
+            dataLo = gutter / canvasWidth;
+            dataHi = 1 - gutter / canvasWidth;
+        }
+        // On-screen length (px) of the time axis, from "now" to the oldest data shown
+        let timePx;
+        if (layout === 'edge') timePx = (dataHi - dataLo) * canvasWidth;
+        else if (layout === 'radial') timePx = (RADIAL_OUTER - RADIAL_OUTER * RADIAL_INNER) * canvasHeight;
+        else timePx = (0.5 - dataLo) * canvasWidth;
         const dataPx = (dataHi - dataLo) * canvasWidth;
         // Stage B: the spectral axis (scale + span actually drawn)
         const axis = this.spectralAxis();
@@ -337,10 +361,13 @@ class SeeingSound {
             // 2D: data spans [dataLo, dataHi] of the width; newest at dataHi
             dataLo: dataLo,
             dataHi: dataHi,
-            visibleWidthRatio: (dataPx / scrollSpeed) / this.texWidth,
-            visibleSeconds: (dataPx / scrollSpeed) / COLUMN_RATE,        // age at the oldest end
-            // 3D: unchanged history length
-            cols3d: Math.max(16, Math.min(GRID_COLS_MAX, Math.round(canvasWidth / (SCROLL_3D_FACTOR * scrollSpeed)))),
+            visibleWidthRatio: (timePx / scrollSpeed) / this.texWidth,
+            visibleSeconds: (timePx / scrollSpeed) / COLUMN_RATE,        // age at the oldest end
+            layout: layoutId,
+            aspect: canvasWidth / Math.max(1, canvasHeight),
+            // 3D: unchanged history length in the edge layout; the centred
+            // layouts show half of it per side, at the same density
+            cols3d: Math.max(16, Math.min(GRID_COLS_MAX, Math.round(canvasWidth / (SCROLL_3D_FACTOR * scrollSpeed) / (layout === 'edge' ? 1 : 2)))),
             newestCol: ((this._writeCount - 1) % this.texWidth + this.texWidth) % this.texWidth,
             colFrac: Math.min(Math.max(pos - (this._writeCount - 1), 0), 0.999),
             persistence: persistenceSeconds(this.settings.trailLength),
@@ -358,13 +385,15 @@ class SeeingSound {
             // glow has room ahead of it; the time axis (and the spectrogram
             // underneath) end at the head. The overlay still clips to the full area.
             const st = this.settings.pitchStyle;
-            const inset = !sweep && (st === 'ribbon' || st === 'plume')
+            const inset = layout === 'edge' && !sweep && (st === 'ribbon' || st === 'plume')
                 ? Math.min(Math.max(canvasWidth * 0.08, 72), 140, dataPx * 0.3) / canvasWidth : 0;
             shared.newestMod = ((this._writeCount - 1) % shared.sweepCols + shared.sweepCols) % shared.sweepCols;
             const pitchSh = { ...shared, clipLo: dataLo, clipHi: dataHi,
                 dataHi: dataHi - inset };          // newest is at dataHi in shader coords either way
-            pitchSh.visibleWidthRatio = ((pitchSh.dataHi - pitchSh.dataLo) * canvasWidth / scrollSpeed) / this.texWidth;
-            pitchSh.visibleSeconds = ((pitchSh.dataHi - pitchSh.dataLo) * canvasWidth / scrollSpeed) / COLUMN_RATE;
+            if (layout === 'edge') {
+                pitchSh.visibleWidthRatio = ((pitchSh.dataHi - pitchSh.dataLo) * canvasWidth / scrollSpeed) / this.texWidth;
+                pitchSh.visibleSeconds = ((pitchSh.dataHi - pitchSh.dataLo) * canvasWidth / scrollSpeed) / COLUMN_RATE;
+            }
             if (this.settings.pitchUnderlay && st !== 'flight') {
                 // the 2D spectrogram, restricted to the pitch axis, no onset flash
                 this.renderWebGL2D({ ...pitchSh,

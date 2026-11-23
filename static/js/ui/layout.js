@@ -187,19 +187,44 @@ class LayoutMethods {
      */
     syncTimeModeUI() {
         const s = this.settings;
-        const sweep = s.mapping === 'pitch' && s.pitchTimeMode === 'sweep';
+        const layout = TIME_LAYOUTS[s.timeLayout] ? s.timeLayout : 'edge';
+        // Scroll / Sweep only exists in the edge layout (a sweep writes edge to edge)
+        const modeField = document.getElementById('timeModeField');
+        if (modeField) modeField.hidden = s.mapping !== 'pitch' || layout !== 'edge';
+        const sweep = layout === 'edge' && s.mapping === 'pitch' && s.pitchTimeMode === 'sweep';
         const flight = s.pitchStyle === 'flight';
         const sweepRow = document.getElementById('sweepTimeRow');
         if (sweepRow) sweepRow.hidden = !sweep;
         const speed = document.getElementById('speedField');
         if (speed) speed.hidden = sweep;
+        const lhint = document.getElementById('timeLayoutHint');
+        if (lhint) lhint.textContent = TIME_LAYOUTS[layout].hint;
+        // Direction: only where history runs one way — edge (2D, Pitch × k) and centre head (all)
         const dirEl = document.getElementById('directionField');
         if (dirEl && sweep) dirEl.hidden = true;
-        else if (dirEl) dirEl.hidden = !['spec2d', 'pitch'].includes(s.mapping);
+        else if (dirEl) dirEl.hidden = layout === 'head' ? false
+            : layout === 'edge' ? !['spec2d', 'pitch'].includes(s.mapping) : true;
+        const container = document.querySelector('.spectrogram-container');
+        if (container) container.classList.toggle('layout-radial', layout === 'radial');
         const hint = document.getElementById('timeModeHint');
         if (hint) hint.textContent = flight && s.mapping === 'pitch'
             ? 'Free flight has no time axis, so Scroll / Sweep does not change it.'
             : 'Scroll moves the history across the screen. Sweep keeps the screen still, like a heart monitor: new pitch and spectrum are written left to right and wrap round over the last pass.';
+    }
+
+    /** Switch the time layout (where "now" sits on the canvas). */
+    setTimeLayout(name) {
+        if (!TIME_LAYOUTS[name]) name = 'edge';
+        this.settings.timeLayout = name;
+        const radio = document.querySelector(`input[name="timelayout-radio"][value="${name}"]`);
+        if (radio) radio.checked = true;
+        if (this._pitch) this._pitch.sparks.length = 0;
+        // the Front 3D camera aims at the centre in the centred layouts
+        if (this.settings.spec3dCamera === 'front' && this.applyCameraPreset) this.applyCameraPreset('front');
+        this.syncTimeModeUI();
+        this.updateSegmentedControlIndicators();
+        this.updateStatusSummary();
+        requestAnimationFrame(() => this.updateLabelGutter && this.updateLabelGutter());
     }
 
     updateStatusSummary() {
@@ -243,12 +268,14 @@ class LayoutMethods {
         const pitch = s.mapping === 'pitch';
         const parts = [
             MAPPING_NAMES[s.mapping] + (s.mapping === 'spec3d' ? ` (${s.spec3dStyle}, ${s.spec3dCamera}, fade ${s.spec3dFade})`
-                : pitch ? ` (${s.pitchStyle}${s.pitchTimeMode === 'sweep' ? `, sweep ${(+s.pitchSweepS).toFixed(1)} s` : ''}, k ${(+s.pitchK).toFixed(2)}, ref ${s.pitchRef === 'moving' ? s.pitchRefMs + ' ms' : 'utterance'})` : ''),
+                : pitch ? ` (${s.pitchStyle}${s.pitchTimeMode === 'sweep' && s.timeLayout === 'edge' ? `, sweep ${(+s.pitchSweepS).toFixed(1)} s` : ''}, k ${(+s.pitchK).toFixed(2)}, ref ${s.pitchRef === 'moving' ? s.pitchRefMs + ' ms' : 'utterance'})` : ''),
             `${rep.label} ${Math.round(s.windowMs)} ms`,
             pitch ? `${s.pitchScale === 'linear' ? 'Lin' : 'Log'} ${s.pitchMin}–${s.pitchMax} Hz` : `${S.label} ${Math.round(ax.lo)}–${Math.round(ax.hi)} Hz`,
             dbRange,
             `${colormap} on ${GROUND_NAMES[s.backgroundStyle] || s.backgroundStyle}`,
-            pitch && s.pitchTimeMode === 'sweep' ? 'sweep →' : `${s.scrollSpeed} ${s.scrollDirection === 'right' ? '→' : '←'}`,
+            `${TIME_LAYOUTS[s.timeLayout]?.label || 'Edge'} · ` + (pitch && s.timeLayout === 'edge' && s.pitchTimeMode === 'sweep' ? 'sweep →'
+                : s.timeLayout === 'mirror' || s.timeLayout === 'radial' ? `${s.scrollSpeed} ↔`
+                : `${s.scrollSpeed} ${s.scrollDirection === 'right' ? '→' : '←'}`),
             `smooth ${s.smoothingMs} ms · persist ${persistenceSeconds(s.trailLength).toFixed(1)} s`,
         ];
         if (s.noiseThreshold > 0) parts.push(`threshold ${s.noiseThreshold}%`);
