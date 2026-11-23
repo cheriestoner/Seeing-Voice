@@ -41,8 +41,9 @@ class SeeingSound {
             //   'edge'   newest at one side edge, history scrolls across (classic)
             //   'mirror' newest on the vertical centre line, history flows out to both sides
             //   'head'   newest on the centre line, history flows to one side only
-            //   'radial' newest on a small ring at the centre, history expands outward;
-            //            frequency / pitch becomes the angle (low at the bottom, mirrored)
+            //   'radial' "Sunrise": newest at a point in the centre, history rises outward
+            //            over the upper half; frequency / pitch is the elevation angle
+            //            (low on the horizon at both sides, high at the zenith)
             timeLayout: 'mirror',
             sampleRate: 44100, // Will be updated with actual sample rate
             analysis: 'stft', // stage A: REPRESENTATIONS id (analysis/representations.js)

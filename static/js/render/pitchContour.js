@@ -225,7 +225,7 @@ class PitchMethods {
         };
         // halves of the history drawn: both for mirror / radial, one otherwise
         g.sides = layout === 1 || layout === 3 ? [1, -1] : [1];
-        // the head: once on the centre line (mirror), on both sides of the inner ring (radial)
+        // the head: once on the centre line (mirror), at the centre point (sunrise)
         g.headSides = layout === 3 ? [1, -1] : [1];
         // columns on screen: sweep = one pass; otherwise the length of the time axis
         const timePx = layout === 0 ? axHi - axLo : layout === 3 ? g.rOuter - g.rInner : g.cx - loPx;
@@ -294,10 +294,10 @@ class PitchMethods {
             case 1: return { x: g.cx + side * ageCols * g.pxPerCol, y };
             case 2: return { x: g.cx + g.dir * ageCols * g.pxPerCol, y };
             case 3: {
-                // radius = age, angle = pitch (0 at the bottom … π at the top)
+                // sunrise: radius = age, elevation = pitch (0 on the horizon … π/2 at the zenith)
                 const r = g.rInner + ageCols * g.pxPerCol;
-                const th = Math.PI * Math.max(0, Math.min(1, 1 - y / g.H));
-                return { x: g.cx + side * r * Math.sin(th), y: g.cy + r * Math.cos(th) };
+                const el = 0.5 * Math.PI * Math.max(0, Math.min(1, 1 - y / g.H));
+                return { x: g.cx + side * r * Math.cos(el), y: g.cy - r * Math.sin(el) };
             }
             default: return { x: g.x0 + g.dir * ageCols * g.pxPerCol, y };
         }

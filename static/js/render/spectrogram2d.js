@@ -42,8 +42,8 @@ class Spectrogram2DMethods {
             uniform float u_bin_hz;   // FFT bin width (Hz), for the warped scales
             uniform int u_colormap; // 0 = experimental, 1 = viridis, 2 = greyscale, 3 = reversed greyscale
             uniform int u_flip;    // 0 = scroll left (←), 1 = scroll right (→)
-            uniform int u_layout;  // TIME_LAYOUTS id: 0 edge, 1 mirror, 2 centre head, 3 radial
-            uniform float u_aspect; // canvas width / height (radial layout)
+            uniform int u_layout;  // TIME_LAYOUTS id: 0 edge, 1 mirror, 2 centre head, 3 sunrise
+            uniform float u_aspect; // canvas width / height (sunrise layout)
             uniform int u_bg_mode; // 0 = dark, 1 = transparent, 2 = white
             uniform int u_soft_edge;      // 0 = hard, 1 = soft (only used when transparent)
             uniform float u_visible_seconds; // age of the data at the left edge
@@ -74,15 +74,16 @@ class Spectrogram2DMethods {
                 float fy = v_uv.y;
                 bool outside;
                 if (u_layout == 3) {
-                    // Radial: now on a small inner ring, history expands outward;
-                    // frequency is the angle from the bottom (mirrored left / right)
+                    // Sunrise: now at the centre, history expands outward over the
+                    // upper half only; frequency is the elevation angle above the
+                    // horizon (low at both sides, high at the zenith, mirrored)
                     vec2 pr = vec2((v_uv.x - 0.5) * u_aspect, v_uv.y - 0.5);
                     float r = length(pr);
                     float R = ${RADIAL_OUTER.toFixed(4)};
                     float r0 = R * ${RADIAL_INNER.toFixed(4)};
-                    outside = r > R || r < r0;
+                    outside = r > R || r < max(r0, 1e-4) || pr.y < 0.0;
                     t = 1.0 - (r - r0) / (R - r0);
-                    fy = atan(abs(pr.x), -pr.y) / 3.14159265;
+                    fy = atan(max(pr.y, 0.0), abs(pr.x)) / 1.57079633;
                 } else if (u_layout == 1) {
                     // Mirror: now on the centre line, the same history on both sides
                     outside = uvx > u_data_hi || uvx < u_data_lo;

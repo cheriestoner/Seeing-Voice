@@ -44,11 +44,12 @@ const TIME_LAYOUTS = {
     edge:   { id: 0, label: 'Edge',   hint: 'Classic: the newest data enters at one side edge and scrolls across the screen.' },
     mirror: { id: 1, label: 'Mirror', hint: 'Now is the vertical centre line; the same history flows out to both sides, symmetrically.' },
     head:   { id: 2, label: 'Centre', hint: 'Now is the vertical centre line; history flows to one side only (set by Direction), like a playhead.' },
-    radial: { id: 3, label: 'Radial', hint: 'Now is a small ring at the centre and history expands outward like a ripple. Frequency (or pitch) becomes the angle: low at the bottom, high at the top, mirrored left and right.' },
+    radial: { id: 3, label: 'Sunrise', hint: 'Now is a point at the centre and history rises outward like the rays of a rising sun (upper half only). Frequency (or pitch) becomes the elevation angle: low on the horizon at both sides, high at the zenith, so a rising pitch moves up.' },
 };
-// Radial layout geometry, as fractions of the canvas height / outer radius
+// Sunrise (radial) layout geometry, as fractions of the canvas height / outer radius.
+// The centre sits at the canvas centre; only the upper half-disc is drawn.
 const RADIAL_OUTER = 0.48;   // outer radius (oldest data) = 0.48 × canvas height
-const RADIAL_INNER = 0.12;   // inner ring ("now") = 0.12 × outer radius
+const RADIAL_INNER = 0.0;    // "now" = a point at the centre (fraction of the outer radius)
 
 // ── Frequency axis scales (pipeline stage B) ─────────────────────────────
 // Each scale is a monotonic warp f (Hz) → u and its inverse. The display axis

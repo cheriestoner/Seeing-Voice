@@ -56,7 +56,7 @@ class Spectrogram3DMethods {
             uniform mat4 u_mvp;
             uniform float u_height_scale;
             uniform int u_lighting;
-            uniform int u_layout;          // TIME_LAYOUTS id (0 edge, 1 mirror, 2 centre head, 3 radial)
+            uniform int u_layout;          // TIME_LAYOUTS id (0 edge, 1 mirror, 2 centre head, 3 sunrise)
             uniform float u_side;          // +1 / −1: which half a centred layout is drawing
             varying float v_amp;
             varying float v_freq;
@@ -100,7 +100,8 @@ class Spectrogram3DMethods {
                 // z = frequency [+1 low, -1 high] so that, seen from the newest
                 // edge (Front camera), low frequencies are on the left.
                 // Centred layouts put now at x = 0 and history outward (u_side);
-                // radial bends the frequency axis into a half circle (low toward +z).
+                // sunrise bends the frequency axis into a quarter circle per side:
+                // low on the horizon (±x), high at the far end (−z, the zenith).
                 // the newest vertex column is pinned to "now" so the two halves of a
                 // centred layout meet without a seam (the first segment stretches instead)
                 float age01 = a_grid.x >= u_ncols - 1.0 ? 0.0 : 1.0 - t;
@@ -109,8 +110,8 @@ class Spectrogram3DMethods {
                 if (u_layout == 3) {
                     float r0 = ${RADIAL_INNER.toFixed(4)};
                     float r = r0 + age01 * (1.0 - r0);
-                    float th = a_grid.y * 3.14159265;
-                    pos = vec3(u_side * r * sin(th), h, r * cos(th));
+                    float th = a_grid.y * 1.57079633;
+                    pos = vec3(u_side * r * cos(th), h, -r * sin(th));
                     dxPerCol = 1.0;
                 } else if (u_layout == 0) {
                     pos = vec3(t * 2.0 - 1.0, h, 1.0 - a_grid.y * 2.0);
@@ -274,7 +275,7 @@ class Spectrogram3DMethods {
         gl.uniform1i(gl.getUniformLocation(p, 'u_colormap'), s.colormapMode);
         gl.uniformMatrix4fv(gl.getUniformLocation(p, 'u_mvp'), false, this._mvp);
         gl.uniform1f(gl.getUniformLocation(p, 'u_height_scale'), this.settings.heightScale3d);
-        // lighting assumes a flat (time × frequency) grid, so it is off in the radial layout
+        // lighting assumes a flat (time × frequency) grid, so it is off in the sunrise layout
         gl.uniform1i(gl.getUniformLocation(p, 'u_lighting'), (this.settings.viewMode === 'surface' && this.settings.spec3dLighting && s.layout !== 3) ? 1 : 0);
         gl.uniform1i(gl.getUniformLocation(p, 'u_layout'), s.layout || 0);
         gl.uniform1i(gl.getUniformLocation(p, 'u_fade_mode'), this.settings.spec3dFade === 'distance' ? 1 : 0);
